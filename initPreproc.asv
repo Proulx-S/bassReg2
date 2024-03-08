@@ -45,7 +45,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 disp('Rewriting data at plumb')
 
 %%% Get oblique and plumb files
-disp([' writing references (for ' num2str(length(fOrigList)) ' runs)'])
+disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' runs)'])
 cmd = {srcAfni};
 %%%% reference
 fIn = fRef;
@@ -110,6 +110,7 @@ for i = 1:numel(fOrigList)
         MRIwrite(volTs_setPlumb,fOut_av_plumb);
         volTs_runOblique.vol = mean(volTs_runOblique.vol,4);
         MRIwrite(volTs_runOblique,fOut_av_oblique);
+        disp('   done')
     else
         disp('   already done, skipping')
     end
@@ -166,6 +167,7 @@ if ~any(ismember({'multiEcho'},dataType))
     if length(cmd)>1
         cmd = strjoin(cmd,newline); % disp(cmd)
         [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+        disp('  done')
     else
         disp('  already done, skipping')
     end
@@ -190,7 +192,8 @@ else
 
     disp('---------------------------------------------------')
     disp('---------------------------------------------------')
-    warning('Make sure echoes are properly sorted below')
+    warning(['Make sure echoes are properly sorted below' ...
+        newline '(runs across rows and echos across columns)'])
     disp(fullfile(squeeze(bidsList(contains(bidsList(:,1,1),'run-'),:,:)),squeeze(bidsList(contains(bidsList(:,1,1),'echo-'),:,:))))
     disp('---------------------------------------------------')
     disp('---------------------------------------------------')
@@ -218,6 +221,7 @@ else
     if length(cmd)>1
         cmd = strjoin(cmd,newline); % disp(cmd)
         [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+        disp('  done')
     else
         disp('  already done, skipping')
     end
@@ -283,7 +287,8 @@ end
 
 
 
-%% Visualize motion
+%% QA: Visualize motion
+%%% between-run
 cmd = {srcFs};
 cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
 cmd = strjoin(cmd,newline); % disp(cmd)
@@ -291,7 +296,7 @@ if param.verbose
     [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
 fFslviewBR = cmd;
-
+%%% within-run
 cmd = {srcFs};
 cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
 cmd = strjoin(cmd,newline); % disp(cmd)
@@ -299,6 +304,12 @@ if param.verbose
     [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
 fFslviewWR = cmd;
+%%% within-run, first, middle and last frames
+fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
+
+funcSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
+funcSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
+funcSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
 
 
 
@@ -370,8 +381,8 @@ if any(ismember({'lowSNR'},dataType))
     [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
 
     %%%% Visualize SNR after smoothing
-    fEstimSm = fEstimList{1};
-    volTs = MRIread(fEstimSm);
+    fEstimAfterSm = fEstimList{1};
+    volTs = MRIread(fEstimAfterSm);
     volAv = mean(volTs.vol,4);
     volEr = std(volTs.vol,[],4);
     ax{end+1} = nexttile;
@@ -395,17 +406,17 @@ if any(ismember({'lowSNR'},dataType))
         ax{i}.CLim = cLim;
         ax{i+3}.CLim = cLim;
     end
-    [~,b,~] = fileparts(fileparts(fEstimSm));
+    [~,b,~] = fileparts(fileparts(fEstimAfterSm));
     title(hTile,b,'interpreter','none')
-    fFiEstimSmFig = replace(fEstimSm,'.nii.gz','.fig');
+    fFigSm = replace(fEstimAfterSm,'.nii.gz','.fig');
     set(hFig, 'CreateFcn', 'set(gcbo,''Visible'',''on'')');
-    saveas(hFig,fEstimSmFig)
+    saveas(hFig,fFigSm)
     
     %%%% Visualize SNR before and after smoothing
     cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' fEstimBeforeSm ' ' fEstimSm ' &'];
+    cmd{end+1} = ['fslview -m single ' fEstimBeforeSm ' ' fEstimAfterSm ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
-    fEstimSmFslview = cmd;
+    fFslviewSm = cmd;
     if param.verbose
         [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
     end
@@ -440,6 +451,31 @@ if any(ismember({'lowSNR'},dataType))
         disp('  already done, skipping')
     end
 
+    %% QA: Visualize motion (with smoothing)
+    %%% between-run
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewBRsm = cmd;
+    %%% within-run
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewWRsm = cmd;
+    %%% within-run, first, middle and last frames
+    fFslviewWRsmFstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb||forceRecomputeRMS,param.verbose);
+
+    funcSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
+
+
 end
 
 
@@ -452,21 +488,20 @@ funcSet.initFiles.fPlumbAvList = fPlumbAvList;
 funcSet.initFiles.fPlumbCatAv = fPlumbCatAv;
 funcSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
 
-funcSet.initFiles.fFslviewBR = fFslviewBR;
-funcSet.initFiles.fFslviewWR = fFslviewWR;
-
 funcSet.initFiles.fEstimList = fEstimList;
 funcSet.initFiles.fEstimAvList = fEstimAvList;
 funcSet.initFiles.fEstimCatAv = fEstimCatAv;
 funcSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
-if exist('fEstimSmFig','var')
-    funcSet.initFiles.fEstimSmFig = fEstimSmFig;
-end
-if exist('fEstimSmFslview','var')
-    funcSet.initFiles.fEstimSmFslview = fEstimSmFslview;
-end
 
 funcSet.initFiles.fApplyList = fApplyList;
 
 funcSet.initFiles.fOblique = fOblique;
 funcSet.initFiles.fPlumb = fPlumb;
+
+%%% QA
+if exist('fFigSm','var')
+    funcSet.initFiles.qaFilesSm.fFigSm = fFigSm;
+end
+if exist('fFslviewSm','var')
+    funcSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
+end

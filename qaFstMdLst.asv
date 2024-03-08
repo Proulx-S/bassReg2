@@ -1,0 +1,38 @@
+function files = qaFstMdLst(files,fieldIn,fieldOut)
+global srcAfni srcFs
+
+%% Catenate first, middle and last frames
+files.(fieldOut) = cell(size(files.(fieldIn)));
+cmd = {srcAfni};
+for i = 1:length(files.(fieldIn))
+    fIn = files.(fieldIn){i};
+    fOut = fIn; fOut = strsplit(fIn,filesep); fOut{end} = ['fstMdLst_' fOut{end}]; fOut = strjoin(fOut,filesep);
+    
+    if ~exist('fOut','file')
+    sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
+    n = MRIread(fIn,1); n = n.nframes - 1;
+    nLim = [0 n] + [1 -1].*((sm+1)/2-1);
+    nLim = [nLim(1) round(mean(nLim)) nLim(2)];
+    nLim = num2str(nLim,'%i,'); nLim(end) = [];
+
+    cmd{end+1} = '3dcalc -overwrite \';
+    cmd{end+1} = ['-prefix ' fOut ' \'];
+    cmd{end+1} = ['-a ' fIn '[' nLim '] \'];
+    cmd{end+1} = '-expr ''a''';
+
+    files.(fieldOut){i} = fOut;
+end
+cmd = strjoin(cmd,newline); % disp(cmd)
+[status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+
+%%%%% generate fslview command
+cmd = {srcFs};
+cmd{end+1} = ['fslview -m single ' strjoin(files.(fieldOut),' ') ' \'];
+if isfield(files,'manBrainMaskInv') && ~isempty(files.manBrainMaskInv)
+    cmd{end+1} = [files.manBrainMaskInv ' &'];
+end
+cmd = strjoin(cmd,newline); % disp(cmd)
+if verbose
+    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+end
+files.qaFiles.fFslviewWRfstMdLst = cmd;

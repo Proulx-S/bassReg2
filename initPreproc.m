@@ -45,7 +45,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 disp('Rewriting data at plumb')
 
 %%% Get oblique and plumb files
-disp([' writing references (for ' num2str(length(fOrigList)) ' runs)'])
+disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' runs)'])
 cmd = {srcAfni};
 %%%% reference
 fIn = fRef;
@@ -110,6 +110,7 @@ for i = 1:numel(fOrigList)
         MRIwrite(volTs_setPlumb,fOut_av_plumb);
         volTs_runOblique.vol = mean(volTs_runOblique.vol,4);
         MRIwrite(volTs_runOblique,fOut_av_oblique);
+        disp('   done')
     else
         disp('   already done, skipping')
     end
@@ -166,6 +167,7 @@ if ~any(ismember({'multiEcho'},dataType))
     if length(cmd)>1
         cmd = strjoin(cmd,newline); % disp(cmd)
         [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+        disp('  done')
     else
         disp('  already done, skipping')
     end
@@ -219,6 +221,7 @@ else
     if length(cmd)>1
         cmd = strjoin(cmd,newline); % disp(cmd)
         [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+        disp('  done')
     else
         disp('  already done, skipping')
     end
@@ -241,6 +244,7 @@ else
             volTs.vol = sqrt(volTs.vol./size(fPlumbList,2));
 
             MRIwrite(volTs,fOut);
+            disp('  done')
         else
             disp('  already done, skipping')
         end
@@ -284,7 +288,8 @@ end
 
 
 
-%% Visualize motion
+%% QA: Visualize motion
+%%% between-run
 cmd = {srcFs};
 cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
 cmd = strjoin(cmd,newline); % disp(cmd)
@@ -292,7 +297,7 @@ if param.verbose
     [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
 fFslviewBR = cmd;
-
+%%% within-run
 cmd = {srcFs};
 cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
 cmd = strjoin(cmd,newline); % disp(cmd)
@@ -300,6 +305,12 @@ if param.verbose
     [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
 fFslviewWR = cmd;
+%%% within-run, first, middle and last frames
+fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
+
+funcSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
+funcSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
+funcSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
 
 
 
@@ -441,6 +452,31 @@ if any(ismember({'lowSNR'},dataType))
         disp('  already done, skipping')
     end
 
+    %% QA: Visualize motion (with smoothing)
+    %%% between-run
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewBRsm = cmd;
+    %%% within-run
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewWRsm = cmd;
+    %%% within-run, first, middle and last frames
+    fFslviewWRsmFstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb||forceRecomputeRMS,param.verbose);
+
+    funcSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
+
+
 end
 
 
@@ -463,11 +499,10 @@ funcSet.initFiles.fApplyList = fApplyList;
 funcSet.initFiles.fOblique = fOblique;
 funcSet.initFiles.fPlumb = fPlumb;
 
-funcSet.qaFiles.fFslviewBR = fFslviewBR;
-funcSet.qaFiles.fFslviewWR = fFslviewWR;
+%%% QA
 if exist('fFigSm','var')
-    funcSet.qaFiles.fFigSm = fFigSm;
+    funcSet.initFiles.qaFilesSm.fFigSm = fFigSm;
 end
 if exist('fFslviewSm','var')
-    funcSet.qaFiles.fFslviewSm = fFslviewSm;
+    funcSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
 end
