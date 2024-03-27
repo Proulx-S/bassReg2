@@ -1,7 +1,9 @@
-function funcSet = initPreproc(funcSet,dOut,geomRef,dataType,param)
-forceRewriteAtPlumb = 0;
-forceRecomputeRMS = 0;
-forceResmoothing = 0;
+function funcSet = initPreproc(funcSet,dOut,geomRef,dataType,param,force)
+if ~exist('force','var'); force = []; end
+if isempty(force); force = 0; end
+forceRewriteAtPlumb = force;
+forceRecomputeRMS = force;
+forceResmoothing = force;
 global srcFs srcAfni
 %% Massage inputs
 %%% funcSet
@@ -45,7 +47,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 disp('Rewriting data at plumb')
 
 %%% Get oblique and plumb files
-disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' runs)'])
+disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' files)'])
 cmd = {srcAfni};
 %%%% reference
 fIn = fRef;
@@ -94,7 +96,7 @@ volTs_setPlumb = MRIread(fPlumb,1);
 fPlumbList = cell(size(fOrigList));
 fPlumbAvList = cell(size(fOrigList));
 for i = 1:numel(fOrigList)
-    disp(['  run' num2str(i) '/' num2str(numel(fOrigList))])
+    disp(['  file' num2str(i) '/' num2str(numel(fOrigList))])
     fIn = fOrigList{i};
     fOut = replace(replace(fOrigList{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
     fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
@@ -230,7 +232,7 @@ else
     disp('computing cross-echo rms')
     fEstimList = cell(size(fPlumbList,1),1);
     for i = 1:size(fPlumbList,1)
-        disp([' run' num2str(i) '/' num2str(size(fPlumbList,1))])
+        disp([' file' num2str(i) '/' num2str(size(fPlumbList,1))])
         fOut = replace(fPlumbList{i,1},'echo-1','echo-rms');
         if forceRecomputeRMS || ~exist(fOut,'file')
             [a,~] = fileparts(fOut); if ~exist(a,'dir'); mkdir(a); end
@@ -367,7 +369,7 @@ if any(ismember({'lowSNR'},dataType))
         fIn = fEstimList{i};
         [d,fOut,~] = fileparts(replace(fIn,'.nii.gz',''));
         fOut = fullfile(d,[strjoin({['sm' num2str(param.tSmWin_vol)] fOut},'_') '.nii.gz']);
-        cmd{end+1} = ['echo '' ''run' num2str(i) '/' num2str(length(fEstimList))];
+        cmd{end+1} = ['echo '' ''file' num2str(i) '/' num2str(length(fEstimList))];
         if forceResmoothing || ~exist(fOut,'file')
             cmd{end+1} = '3dTsmooth -overwrite \';
             cmd{end+1} = ['-prefix ' fOut ' \'];

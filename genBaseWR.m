@@ -1,20 +1,23 @@
 function outFiles = genBaseWR(inFiles,param,force,verbose)
 % baseType,baseTypeForGenBase,afni3dAlineateArg
+% baseTypeForGenBase = 'first' (default), 'mid', 'last', 'av', 'mcAv';
+%'first'; baseTypeForGenBase = '';
+
 global srcAfni
 %% Init
-if exist('param','var') && ~isempty(param) && isfield(param,'enforceFixThroughPlane'); enforceFixThroughPlane = param.enforceFixThroughPlane; else; enforceFixThroughPlane = []; end
+if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
 if exist('param','var') && ~isempty(param) && isfield(param,'baseType'); baseType = param.baseType; else; baseType = ''; end
 if exist('param','var') && ~isempty(param) && isfield(param,'baseTypeForGenBase'); baseTypeForGenBase = param.baseTypeForGenBase; else; baseTypeForGenBase = ''; end
 if exist('param','var') && ~isempty(param) && isfield(param,'afni3dAlineateArg'); afni3dAlineateArg = param.afni3dAlineateArg; else; afni3dAlineateArg = ''; end
 if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
 %% Defaults
-if isempty(enforceFixThroughPlane); enforceFixThroughPlane = 0; end
-if isempty(baseType); baseType = 'mcAv'; end
+if isempty(explicitlyFixThroughPlane); explicitlyFixThroughPlane = 0; end
+if isempty(baseType); baseType = 'first'; end
 if isempty(baseTypeForGenBase)
     switch baseType
         case 'mcAv'; baseTypeForGenBase = 'first';
-        case 'first'; baseTypeForGenBase = '';
+        case {'first' 'mid' 'last' 'av'}; baseTypeForGenBase = '';
         otherwise; dbstack; error('code that');
     end
 end
@@ -65,7 +68,7 @@ switch baseType
                 else
                     disp('  not using mask')
                 end
-                if enforceFixThroughPlane
+                if explicitlyFixThroughPlane
                     cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
                     disp('  enforcing no through-plane motion')
                 end
@@ -93,7 +96,7 @@ switch baseType
         end
 
 
-    case 'first'
+    case {'first' 'mid' 'last'}
         %% Set base as the first properly smoothed frame
         disp('setting base for motion estimation (first properly smoothed frame)')
         for I = 1:length(outFiles.fEstimList)
@@ -104,11 +107,55 @@ switch baseType
             n = MRIread(fIn,1); n = n.nframes - 1;
             nLim = [0 n] + [1 -1].*((sm+1)/2-1);
             %%% set base filename
-            outFiles.fEstimBaseList{I} = [fIn '[' num2str(nLim(1)) ']'];
+            switch baseType
+                case 'first'
+                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(nLim(1)) ']'];
+                case 'mid'
+                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(round(mean(nLim))) ']'];
+                case 'last'
+                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(nLim(2)) ']'];
+                otherwise
+                    dbstack; error('code that')
+            end
         end
         disp(' done')
 
+
+    case 'av'
+        %% Set base as the time series average
+        disp('setting base for motion estimation (timeseries average)')
+        for I = 1:length(outFiles.fEstimList)
+            disp([' run' num2str(I) '/' num2str(length(outFiles.fEstimList))])
+            cmd = {srcAfni};
+            %%% set filename
+            fIn = outFiles.fEstimList{I};
+            fOut = strsplit(fIn,filesep); fOut{end} = ['mcRef-' baseType '_' fOut{end}]; fOut = strjoin(fOut,filesep);
+            %%% detect smoothing
+            sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
+            n = MRIread(fIn,1); n = n.nframes - 1;
+            nLim = [0 n] + [1 -1].*((sm+1)/2-1);
+            %%% average
+            cmd{end+1} = '3dTstat -overwrite \';
+            cmd{end+1} = ['-prefix ' fOut ' \'];
+            cmd{end+1} = '-mean \';
+            cmd{end+1} = [fIn '[' num2str(nLim(1)) '..' num2str(nLim(2)) ']'];
+            %%% run shell command
+            cmd = strjoin(cmd,newline); % disp(cmd)
+            if verbose
+                [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+            else
+                [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+            end
+            disp('  done')
+            %%% set base filename
+            outFiles.fEstimBaseList{I} = fOut;
+        end
+
+
+    otherwise
+        dbstack; error('code that')
 end
+
 
 %% Outputs
 if isfield(inFiles,'manBrainMask')
