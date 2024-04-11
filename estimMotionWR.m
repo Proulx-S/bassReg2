@@ -184,6 +184,7 @@ files.qaFiles.fFslviewWR = cmd;
 files.qaFiles.fFslviewWRfstMdLst = qaFstMdLst(files.fMocoList,force,verbose);
 files = addMaskToCmd(files);
 
+files.param = param;
 
 
 

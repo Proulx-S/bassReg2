@@ -1,9 +1,9 @@
-function xSet = initPreproc(xSet,dOut,geomRef,dataType,param,force)
+function funcSet = initPreproc(funcSet,dOut,geomRef,dataType,param,force)
 if ~exist('force','var');    force    = []; end
 if ~exist('dataType','var'); dataType = {}; end % 'vol' or 'volTs'
 
 % override dataType
-if isfield(xSet,'dataType'); dataType = xSet.dataType; end
+if isfield(funcSet,'dataType'); dataType = funcSet.dataType; end
 
 if isempty(force);    force    = 0        ; end
 if isempty(dataType); dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
@@ -29,20 +29,20 @@ global srcFs srcAfni
 %% Massage inputs
 %%% funcSet
 %%%% sort by acquisition time
-[~,b] = sort(getAcqTime(fullfile({xSet.files.folder},{xSet.files.name})));
-xSet.files = xSet.files(b);
+[~,b] = sort(getAcqTime(fullfile({funcSet.files.folder},{funcSet.files.name})));
+funcSet.files = funcSet.files(b);
 %%%% refactor
-dIn = xSet.files(1).folder;
-fOrigList = fullfile(dIn,{xSet.files.name}');
-label = xSet.label;
-bidsList = replace({xSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
+dIn = funcSet.files(1).folder;
+fOrigList = fullfile(dIn,{funcSet.files.name}');
+label = funcSet.label;
+bidsList = replace({funcSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
 %%% dOut
 dOut = fullfile(dOut,label); if ~exist(dOut,'dir'); mkdir(dOut); end
 %%% geomRef
 if ~exist('geomRef','var'); geomRef = []; end
 if isempty(geomRef)
-    if isfield(xSet,'fGeom') && ~isempty(xSet.fGeom)
-        fRef = xSet.fGeom;
+    if isfield(funcSet,'fGeom') && ~isempty(funcSet.fGeom)
+        fRef = funcSet.fGeom;
     else
         fRef = fOrigList{1};
     end
@@ -53,7 +53,7 @@ else
         fRef = geomRef;
     end
 end
-xSet.fGeom = fRef;
+funcSet.fGeom = fRef;
 % param
 if ~exist('param','var'); param = []; end
 if ~isfield(param,'nDummy') || isempty(param.nDummy); param.nDummy = 0; end
@@ -327,36 +327,27 @@ end
 
 %% QA: Visualize motion
 %%% between-run
-if ~isempty(fEstimCatAv)
-    cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
-    cmd = strjoin(cmd,newline); % disp(cmd)
-    if param.verbose
-        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
-    end
-    fFslviewBR = cmd;
-else
-    fFslviewBR = '';
+cmd = {srcFs};
+cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+cmd = strjoin(cmd,newline); % disp(cmd)
+if param.verbose
+    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
+fFslviewBR = cmd;
 %%% within-run
-if nframes>1
-    cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
-    cmd = strjoin(cmd,newline); % disp(cmd)
-    if param.verbose
-        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
-    end
-    fFslviewWR = cmd;
-    %%% within-run, first, middle and last frames
-    fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
-else
-    fFslviewWR = '';
-    fFslviewWRfstMdLst = '';
+cmd = {srcFs};
+cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
+cmd = strjoin(cmd,newline); % disp(cmd)
+if param.verbose
+    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end
+fFslviewWR = cmd;
+%%% within-run, first, middle and last frames
+fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
 
-xSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
-xSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
-xSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
+funcSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
+funcSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
+funcSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
 
 
 
@@ -518,37 +509,37 @@ if any(ismember({'lowSNR'},dataType))
     %%% within-run, first, middle and last frames
     fFslviewWRsmFstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb||forceRecomputeRMS,param.verbose);
 
-    xSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
-    xSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
-    xSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
+    funcSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
+    funcSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
 
 
 end
 
 
 %% Sumarize outputs
-xSet.initFiles.fOrigList = fOrigList;
+funcSet.initFiles.fOrigList = fOrigList;
 
-xSet.initFiles.fPlumb = fPlumb;
-xSet.initFiles.fPlumbList = fPlumbList;
-xSet.initFiles.fPlumbAvList = fPlumbAvList;
-xSet.initFiles.fPlumbCatAv = fPlumbCatAv;
-xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
+funcSet.initFiles.fPlumb = fPlumb;
+funcSet.initFiles.fPlumbList = fPlumbList;
+funcSet.initFiles.fPlumbAvList = fPlumbAvList;
+funcSet.initFiles.fPlumbCatAv = fPlumbCatAv;
+funcSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
 
-xSet.initFiles.fEstimList = fEstimList;
-xSet.initFiles.fEstimAvList = fEstimAvList;
-xSet.initFiles.fEstimCatAv = fEstimCatAv;
-xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+funcSet.initFiles.fEstimList = fEstimList;
+funcSet.initFiles.fEstimAvList = fEstimAvList;
+funcSet.initFiles.fEstimCatAv = fEstimCatAv;
+funcSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
 
-xSet.initFiles.fApplyList = fApplyList;
+funcSet.initFiles.fApplyList = fApplyList;
 
-xSet.initFiles.fOblique = fOblique;
-xSet.initFiles.fPlumb = fPlumb;
+funcSet.initFiles.fOblique = fOblique;
+funcSet.initFiles.fPlumb = fPlumb;
 
 %%% QA
 if exist('fFigSm','var')
-    xSet.initFiles.qaFilesSm.fFigSm = fFigSm;
+    funcSet.initFiles.qaFilesSm.fFigSm = fFigSm;
 end
 if exist('fFslviewSm','var')
-    xSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
+    funcSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
 end

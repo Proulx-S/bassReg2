@@ -133,3 +133,4 @@ if verbose
 end
 files.qaFiles.fFslviewBR = cmd;
 
+files.param = param;

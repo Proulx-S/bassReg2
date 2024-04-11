@@ -4,6 +4,7 @@ global srcAfni srcFs
 if ~exist('param','var'); param = []; end; if isempty(param); param.fMask = []; param.tSmWin_vol = []; end
 if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
+if ~isfield(param,'tSmWin_vol'); param.tSmWin_vol = []; end
 if isempty(param.tSmWin_vol); param.tSmWin_vol = 0; end
 if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
@@ -36,8 +37,8 @@ for I = 1:size(files.fOrig,1)
         %%%% cat transformations
         cmd{end+1} = ['rm -f ' fMotCat];
         cmd{end+1} = ['head -1 ' strjoin(fMot(I,1),' ') ' > ' fMotCat];
-        cmd{end+1} = ['cat_matvec ' strjoin(fMot(I,end:-1:1),' ') ' >> ' fMotCat];
-
+        cmd{end+1} = ['cat_matvec ' strjoin(flip(fMot(I,:)),' ') ' >> ' fMotCat];
+        
         cmd{end+1} = '3dAllineate -overwrite \';
         cmd{end+1} = ['-source ' fIn ' \'];
         cmd{end+1} = ['-1Dmatrix_apply ' fMotCat ' \'];
@@ -73,7 +74,12 @@ for I = 1:size(files.fOrig,1)
         end
 
         %%% run command
-        if force || (~exist(fCorrectedSm{I,E},'file') || ~exist(files.fCorrectedList{I,E},'file') || ~exist(files.fCorrectedAvList{I,E},'file') || ~exist(files.fTransCatList{I,E},'file'))
+        if force ||...
+        (exist('fCorrectedSm','var') && ~exist(fCorrectedSm{I,E},'file')) ||...
+        (isfield(files,'fCorrectedList') && ~exist(files.fCorrectedList{I,E},'file')) ||...
+        (isfield(files,'fCorrectedAvList') && ~exist(files.fCorrectedAvList{I,E},'file')) ||...
+        (isfield(files,'fTransCatList') && ~exist(files.fTransCatList{I,E},'file'))
+        % if force || (~exist(fCorrectedSm{I,E},'file') || ~exist(files.fCorrectedList{I,E},'file') || ~exist(files.fCorrectedAvList{I,E},'file') || ~exist(files.fTransCatList{I,E},'file'))
             cmd = strjoin(cmd,newline); % disp(cmd)
             if verbose
                 [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
@@ -89,7 +95,7 @@ for I = 1:size(files.fOrig,1)
 
     end
 
-    %%% Cros-echo processing
+    %%% Cross-echo processing
     cmd = {srcAfni};
     %%%% rms
     if size(files.fCorrectedList,2)>1
@@ -107,19 +113,21 @@ for I = 1:size(files.fOrig,1)
         end
         files.fCorrectedEchoRmsList{I,1} = fOut;
 
-        fOut = fCorrectedSm{I,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-        if force || ~exist(fOut,'file')
-            fIn = fCorrectedSm(I,:);
-            tmp = ('a':'z'); tmp = tmp(1:length(fIn));
-            expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
-            cmd{end+1} = '3dcalc -overwrite \';
-            cmd{end+1} = ['-prefix ' fOut ' \'];
-            for i = 1:length(fIn)
-                cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
+        if param.tSmWin_vol
+            fOut = fCorrectedSm{I,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+            if force || ~exist(fOut,'file')
+                fIn = fCorrectedSm(I,:);
+                tmp = ('a':'z'); tmp = tmp(1:length(fIn));
+                expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
+                cmd{end+1} = '3dcalc -overwrite \';
+                cmd{end+1} = ['-prefix ' fOut ' \'];
+                for i = 1:length(fIn)
+                    cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
+                end
+                cmd{end+1} = ['-expr ''' expr ''''];
             end
-            cmd{end+1} = ['-expr ''' expr ''''];
+            fCorrectedSmRms{I,1} = fOut;
         end
-        fCorrectedSmRms{I,1} = fOut;
 
         fOut = files.fCorrectedAvList{I,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
         if force || ~exist(fOut,'file')
@@ -230,15 +238,14 @@ end
 
 %%%% between-run motion
 cmd = {srcFs};
-if ~isempty(maskFile)
-    if iscell(files.fCorrectedCatAv)
-        cmd{end+1} = ['fslview -m single ' strjoin(files.fCorrectedCatAv,' ') ' \'];
-    else
-        cmd{end+1} = ['fslview -m single ' files.fCorrectedCatAv ' \'];
-    end
-    cmd{end+1} = [maskFile ' &'];
+if iscell(files.fCorrectedCatAv)
+    cmd{end+1} = ['fslview -m single ' strjoin(files.fCorrectedCatAv,' ') ' &'];
 else
     cmd{end+1} = ['fslview -m single ' files.fCorrectedCatAv ' &'];
+end
+if ~isempty(maskFile)
+    cmd{end} = replace(cmd{end},' &',' \');
+    cmd{end+1} = [maskFile ' &'];
 end
 cmd = strjoin(cmd,newline); % disp(cmd)
 if verbose
@@ -286,6 +293,32 @@ if param.tSmWin_vol>1
     end
 end
 
+%%%% between-set motion
+if isfield(param,'bsMoco')
+    fBase = param.bsMoco.fBase;
+    if isfield(files,'fCorrectedAvEchoRmsList')
+        fSource = files.fCorrectedAvEchoRmsList{param.bsMoco.iSource};
+    else
+        fSource = files.fCorrectedAvList{param.bsMoco.iSource,1};
+    end
+    %%%%% generate qa file
+    cmd = {srcAfni};
+    cmd{end+1} = '3dTcat -overwrite \';
+    fCatAfter = tempname; mkdir(fCatAfter); fCatAfter = fullfile(fCatAfter,'bsCatAfter.nii.gz');
+    cmd{end+1} = ['-prefix ' fCatAfter ' \'];
+    cmd{end+1} = [fSource ' ' fBase];
+    %%%%% generate qa command
+    cmd{end+1} = srcFs;
+    cmd{end+1} = 'fslview -m single \';
+    cmd{end+1} = [fCatAfter ' \'];
+    cmd{end+1} = [param.maskFile ' &'];
+
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    files.qaFiles.fFslviewBS = cmd;
+end
 
 
 
