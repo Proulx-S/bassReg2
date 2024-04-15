@@ -34,17 +34,17 @@ else
     fMask = '';
 end
 
-outFiles.fEstimList = inFiles.fEstimList;
-outFiles.fEstimBaseList = cell(size(outFiles.fEstimList));
+outFiles.fEstim = inFiles.fEstim;
+outFiles.fEstimBase = cell(size(outFiles.fEstim));
 switch baseType
     case 'mcAv'
         %% Generate base as the average of a first-pass-motion-corrected time seires, accounting for smoothing
         disp(['generating base for motion estimation (first-pass moco to ' baseTypeForGenBase ' frame, accounting for smoothing)'])
-        for I = 1:length(outFiles.fEstimList)
-            disp([' run' num2str(I) '/' num2str(length(outFiles.fEstimList))])
+        for I = 1:length(outFiles.fEstim)
+            disp([' run' num2str(I) '/' num2str(length(outFiles.fEstim))])
             cmd = {srcAfni};
             %%% set filename
-            fIn = outFiles.fEstimList{I};
+            fIn = outFiles.fEstim{I};
             fOut = strsplit(fIn,filesep); fOut{end} = ['mcRef-' baseType '_' fOut{end}]; fOut = strjoin(fOut,filesep);
             if force || ~exist(fOut,'file')
                 %%% detect smoothing
@@ -92,16 +92,16 @@ switch baseType
                 disp('  already done, skipping')
             end
             %%% set base filename
-            outFiles.fEstimBaseList{I} = fOut;
+            outFiles.fEstimBase{I} = fOut;
         end
 
 
     case {'first' 'mid' 'last'}
         %% Set base as the first properly smoothed frame
         disp('setting base for motion estimation (first properly smoothed frame)')
-        for I = 1:length(outFiles.fEstimList)
+        for I = 1:length(outFiles.fEstim)
             %%% set filename
-            fIn = outFiles.fEstimList{I};
+            fIn = outFiles.fEstim{I};
             %%% detect smoothing
             sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
             n = MRIread(fIn,1); n = n.nframes - 1;
@@ -109,11 +109,11 @@ switch baseType
             %%% set base filename
             switch baseType
                 case 'first'
-                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(nLim(1)) ']'];
+                    outFiles.fEstimBase{I} = [fIn '[' num2str(nLim(1)) ']'];
                 case 'mid'
-                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(round(mean(nLim))) ']'];
+                    outFiles.fEstimBase{I} = [fIn '[' num2str(round(mean(nLim))) ']'];
                 case 'last'
-                    outFiles.fEstimBaseList{I} = [fIn '[' num2str(nLim(2)) ']'];
+                    outFiles.fEstimBase{I} = [fIn '[' num2str(nLim(2)) ']'];
                 otherwise
                     dbstack; error('code that')
             end
@@ -124,11 +124,11 @@ switch baseType
     case 'av'
         %% Set base as the time series average
         disp('setting base for motion estimation (timeseries average)')
-        for I = 1:length(outFiles.fEstimList)
-            disp([' run' num2str(I) '/' num2str(length(outFiles.fEstimList))])
+        for I = 1:length(outFiles.fEstim)
+            disp([' run' num2str(I) '/' num2str(length(outFiles.fEstim))])
             cmd = {srcAfni};
             %%% set filename
-            fIn = outFiles.fEstimList{I};
+            fIn = outFiles.fEstim{I};
             fOut = strsplit(fIn,filesep); fOut{end} = ['mcRef-' baseType '_' fOut{end}]; fOut = strjoin(fOut,filesep);
             %%% detect smoothing
             sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
@@ -148,7 +148,7 @@ switch baseType
             end
             disp('  done')
             %%% set base filename
-            outFiles.fEstimBaseList{I} = fOut;
+            outFiles.fEstimBase{I} = fOut;
         end
 
 

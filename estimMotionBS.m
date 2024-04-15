@@ -12,31 +12,27 @@ explicitlyFixThroughPlane = 0;
 spSmFac = 0;
 
 %% Define files and param
-if isfield(funcSetBase.preprocFiles,'fCorrectedAvEchoRmsList')
-    fBase = funcSetBase.preprocFiles.fCorrectedAvEchoRmsList{baseRunInd};
-else
-    fBase = funcSetBase.preprocFiles.fCorrectedAvList{baseRunInd};
-end
-if isfield(funcSetSource.preprocFiles,'fCorrectedAvEchoRmsList')
-    fSource = funcSetSource.preprocFiles.fCorrectedAvEchoRmsList{sourceRunInd};
-else
-    fSource = funcSetSource.preprocFiles.fCorrectedAvList{sourceRunInd};
-end
-fMask = funcSetBase.initFiles.manBrainMaskInv;
+dbstack; error('correct that here')
+[fBase,fMask,fMaskInv] = autoSelect(funcSetBase,baseRunInd);
+fSource = autoSelect(funcSetSource,sourceRunInd);
 vsize = MRIread(fBase,1); vsize = mean([vsize.xsize vsize.ysize]);
-
 fOut = strsplit(fSource,filesep); fOut{end} = ['mcBS_' fOut{end}]; fOut = strjoin(fOut,filesep);
 fOutParam = replace(fOut,'.nii.gz','');
 
 
-
+%% Generate qa files before
 disp('Estimating motion between sets')
 cmd = {srcAfni};
-%% Generate qa files before
-cmd{end+1} = '3dTcat -overwrite \';
-fCatBefore = strsplit(fSource,filesep); fCatBefore{end} = ['bsCatBefore_' fCatBefore{end}]; fCatBefore = strjoin(fCatBefore,filesep);
-cmd{end+1} = ['-prefix ' fCatBefore ' \'];
-cmd{end+1} = [fSource ' ' fBase];
+mriSource = MRIread(fSource,1);
+mriBase =  MRIread(fBase,1);
+sameGridFlag = all([mriSource.volsize mriSource.xsize mriSource.ysize mriSource.zsize]==[mriBase.volsize mriBase.xsize mriBase.ysize mriBase.zsize]);
+if sameGridFlag
+    cmd{end+1} = '3dTcat -overwrite \';
+    fCatBefore = strsplit(fSource,filesep); fCatBefore{end} = ['bsCatBefore_' fCatBefore{end}]; fCatBefore = strjoin(fCatBefore,filesep);
+    cmd{end+1} = ['-prefix ' fCatBefore ' \'];
+    cmd{end+1} = [fSource ' ' fBase];
+end
+
 
 %% Moco
 cmd{end+1} = '3dAllineate -overwrite \';
@@ -66,9 +62,9 @@ afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'};
 % afni3dAlineateArg = {'-cost nmi+ZZ' '-interp quintic' '-final wsinc5'};
 % afni3dAlineateArg = {'-cost nmi+' '-interp quintic' '-final wsinc5'};
 cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
-if ~isempty(fMask)
-    disp([' using mask: ' fMask])
-    cmd{end+1} = ['-emask ' fMask ' \'];
+if ~isempty(fMaskInv)
+    disp([' using mask: ' fMaskInv])
+    cmd{end+1} = ['-emask ' fMaskInv ' \'];
 else
     disp(' not using mask')
 end
@@ -86,26 +82,30 @@ cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2
 if verbose; disp(strjoin(cmd,newline)); end
 
 %% Generate qa files after
-cmd{end+1} = '3dTcat -overwrite \';
-fCatAfter = strsplit(fSource,filesep); fCatAfter{end} = ['bsCatAfter_' fCatAfter{end}]; fCatAfter = strjoin(fCatAfter,filesep);
-cmd{end+1} = ['-prefix ' fCatAfter ' \'];
-cmd{end+1} = [fOut ' ' fBase];
+if sameGridFlag
+    cmd{end+1} = '3dTcat -overwrite \';
+    fCatAfter = strsplit(fSource,filesep); fCatAfter{end} = ['bsCatAfter_' fCatAfter{end}]; fCatAfter = strjoin(fCatAfter,filesep);
+    cmd{end+1} = ['-prefix ' fCatAfter ' \'];
+    cmd{end+1} = [fOut ' ' fBase];
+end
 
 %%% with the spatial smoothing applied internaly within 3dAllineate
-if spSmFac
-    cmd{end+1} = '3dmerge -overwrite \';
-    cmd{end+1} = ['-1blur_fwhm ' num2str(vsize*spSmFac) ' \'];
-    cmd{end+1} = '-doall \';
-    fCatAfterBlur = strsplit(fCatAfter,filesep); fCatAfterBlur{end} = ['blur_' fCatAfterBlur{end}]; fCatAfterBlur = strjoin(fCatAfterBlur,filesep);
-    cmd{end+1} = ['-prefix ' fCatAfterBlur ' \'];
-    cmd{end+1} = fCatAfter;
+if sameGridFlag
+    if spSmFac
+        cmd{end+1} = '3dmerge -overwrite \';
+        cmd{end+1} = ['-1blur_fwhm ' num2str(vsize*spSmFac) ' \'];
+        cmd{end+1} = '-doall \';
+        fCatAfterBlur = strsplit(fCatAfter,filesep); fCatAfterBlur{end} = ['blur_' fCatAfterBlur{end}]; fCatAfterBlur = strjoin(fCatAfterBlur,filesep);
+        cmd{end+1} = ['-prefix ' fCatAfterBlur ' \'];
+        cmd{end+1} = fCatAfter;
 
-    cmd{end+1} = '3dmerge -overwrite \';
-    cmd{end+1} = ['-1blur_fwhm ' num2str(vsize*spSmFac) ' \'];
-    cmd{end+1} = '-doall \';
-    fCatBeforeBlur = strsplit(fCatBefore,filesep); fCatBeforeBlur{end} = ['blur_' fCatBeforeBlur{end}]; fCatBeforeBlur = strjoin(fCatBeforeBlur,filesep);
-    cmd{end+1} = ['-prefix ' fCatBeforeBlur ' \'];
-    cmd{end+1} = fCatBefore;
+        cmd{end+1} = '3dmerge -overwrite \';
+        cmd{end+1} = ['-1blur_fwhm ' num2str(vsize*spSmFac) ' \'];
+        cmd{end+1} = '-doall \';
+        fCatBeforeBlur = strsplit(fCatBefore,filesep); fCatBeforeBlur{end} = ['blur_' fCatBeforeBlur{end}]; fCatBeforeBlur = strjoin(fCatBeforeBlur,filesep);
+        cmd{end+1} = ['-prefix ' fCatBeforeBlur ' \'];
+        cmd{end+1} = fCatBefore;
+    end
 end
 
 %% Run command
@@ -118,14 +118,14 @@ if force || ~exist([fOutParam '.aff12.1D'],'file')
     end
     disp([' source : ' fSource])
     disp([' base   : ' fBase])
-    disp([' mask   : ' fMask])
+    disp([' mask   : ' fMaskInv])
     disp([' outputs: ' fOut])
     disp(['           ' fOutParam '.aff12.1D'])
     disp('done')
 else
     disp([' source : ' fSource])
     disp([' base   : ' fBase])
-    disp([' mask   : ' fMask])
+    disp([' mask   : ' fMaskInv])
     disp([' outputs: ' fOut])
     disp(['          ' fOutParam '.aff12.1D'])
     disp(' already done, skipping')
@@ -136,27 +136,41 @@ files.fMoco = fSource;
 files.fMocoParam = [fOutParam '.param.1D'];
 files.fMocoMat = [fOutParam '.aff12.1D'];
 files.fBase = fBase;
-files.manBrainMaskInv = fMask;
-files.fCatBefore = fCatBefore;
-files.fCatAfter = fCatAfter;
-if spSmFac
+files.manBrainMaskInv = fMaskInv;
+files.manBrainMask = fMask;
+if sameGridFlag
+    files.fCatBefore = fCatBefore;
+    files.fCatAfter = fCatAfter;
+end
+if spSmFac && sameGridFlag
     files.fCatBeforeBlur = fCatBeforeBlur;
     files.fCatAfterBlur = fCatAfterBlur;
 end
 
-
-cmd = {srcFs};
-cmd{end+1} = 'fslview -m single \';
-if spSmFac
-    cmd{end+1} = [fCatBeforeBlur ' \'];
-    cmd{end+1} = [fCatAfterBlur ' \'];
+if sameGridFlag
+    cmd = {srcFs};
+    cmd{end+1} = 'fslview -m single \';
+    if spSmFac
+        cmd{end+1} = [fCatBeforeBlur ' \'];
+        cmd{end+1} = [fCatAfterBlur ' \'];
+    end
+    cmd{end+1} = [fCatBefore ' \'];
+    cmd{end+1} = [fCatAfter ' \'];
+    cmd{end+1} = [fMaskInv ' &'];
+else
+    cmd = {srcFs};
+    cmd{end+1} = 'freeview \';
+    cmd{end+1} = [fBase ' \'];
+    cmd{end+1} = [fSource ':visible=0 \'];
+    cmd{end+1} = [fOut ' \'];
+    cmd{end+1} = [fMaskInv ' &'];
 end
-cmd{end+1} = [fCatBefore ' \'];
-cmd{end+1} = [fCatAfter ' \'];
-cmd{end+1} = [fMask ' &'];
 
 
 files.qaFiles.fFslviewBS = strjoin(cmd,newline);
 if verbose
     system(files.qaFiles.fFslviewBS);
 end
+
+
+

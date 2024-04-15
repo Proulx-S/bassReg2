@@ -1,9 +1,9 @@
-function funcSet = initPreproc(funcSet,dOut,geomRef,dataType,param,force)
+function xSet = initPreproc(xSet,dOut,geomRef,dataType,param,force)
 if ~exist('force','var');    force    = []; end
 if ~exist('dataType','var'); dataType = {}; end % 'vol' or 'volTs'
 
 % override dataType
-if isfield(funcSet,'dataType'); dataType = funcSet.dataType; end
+if isfield(xSet,'dataType'); dataType = xSet.dataType; end
 
 if isempty(force);    force    = 0        ; end
 if isempty(dataType); dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
@@ -29,20 +29,20 @@ global srcFs srcAfni
 %% Massage inputs
 %%% funcSet
 %%%% sort by acquisition time
-[~,b] = sort(getAcqTime(fullfile({funcSet.files.folder},{funcSet.files.name})));
-funcSet.files = funcSet.files(b);
+[~,b] = sort(getAcqTime(fullfile({xSet.files.folder},{xSet.files.name})));
+xSet.files = xSet.files(b);
 %%%% refactor
-dIn = funcSet.files(1).folder;
-fOrigList = fullfile(dIn,{funcSet.files.name}');
-label = funcSet.label;
-bidsList = replace({funcSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
+dIn = xSet.files(1).folder;
+fOrigList = fullfile(dIn,{xSet.files.name}');
+label = xSet.label;
+bidsList = replace({xSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
 %%% dOut
 dOut = fullfile(dOut,label); if ~exist(dOut,'dir'); mkdir(dOut); end
 %%% geomRef
 if ~exist('geomRef','var'); geomRef = []; end
 if isempty(geomRef)
-    if isfield(funcSet,'fGeom') && ~isempty(funcSet.fGeom)
-        fRef = funcSet.fGeom;
+    if isfield(xSet,'fGeom') && ~isempty(xSet.fGeom)
+        fRef = xSet.fGeom;
     else
         fRef = fOrigList{1};
     end
@@ -53,7 +53,7 @@ else
         fRef = geomRef;
     end
 end
-funcSet.fGeom = fRef;
+xSet.fGeom = fRef;
 % param
 if ~exist('param','var'); param = []; end
 if ~isfield(param,'nDummy') || isempty(param.nDummy); param.nDummy = 0; end
@@ -69,11 +69,11 @@ cmd = {srcAfni};
 %%%% reference
 fIn = fRef;
 nframes = MRIread(fIn,1); nframes = nframes.nframes; if nframes>8; nframes = 8; end
-fPlumb = fullfile(dOut,'setPlumb_volRef.nii.gz');
-if forceRewriteAtPlumb || ~exist(fPlumb,'file')
+fPlumbRef = fullfile(dOut,'setPlumb_volRef.nii.gz');
+if forceRewriteAtPlumb || ~exist(fPlumbRef,'file')
     cmd{end+1} = '3dNwarpApply -overwrite \';
     cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
-    cmd{end+1} = ['-prefix ' fPlumb ' \'];
+    cmd{end+1} = ['-prefix ' fPlumbRef ' \'];
     cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
 end
 fOblique = fullfile(dOut,'setOblique_volRef.nii.gz');
@@ -111,26 +111,34 @@ end
 
 %%% Rewrite at plumb (and means for later visualization)
 disp(' writing data (and means for later visualization)')
-volTs_setPlumb = MRIread(fPlumb,1);
+mri_setPlumbRef = MRIread(fPlumbRef,1);
 fPlumbList = cell(size(fOrigList));
 fPlumbAvList = cell(size(fOrigList));
 for i = 1:numel(fOrigList)
     disp(['  file' num2str(i) '/' num2str(numel(fOrigList))])
     fIn = fOrigList{i};
     fOut = replace(replace(fOrigList{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
-    fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
-    fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
-    fOut_av_oblique = fullfile(fOut,'av_runOblique_volTs.nii.gz'); clear fOut
+    if any(ismember(dataType,'volTs'))
+        fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
+        fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
+        fOut_av_oblique = fullfile(fOut,'av_runOblique_volTs.nii.gz'); clear fOut
+    elseif any(ismember(dataType,'vol'))
+        fOut_plumb = fullfile(fOut,'setPlumb_vol.nii.gz');
+        fOut_av_plumb = fullfile(fOut,'av_setPlumb_vol.nii.gz');
+        fOut_av_oblique = fullfile(fOut,'av_runOblique_vol.nii.gz'); clear fOut
+    else
+        dbstack; error(['don''t know which suffix to give' newline 'please set ''vol'' or ''volTs'' as dataType'])
+    end
     if forceRewriteAtPlumb || ...
             any([~exist(fOut_plumb,'file') ~exist(fOut_av_plumb,'file') ~exist(fOut_av_oblique,'file')])
-        volTs_runOblique = MRIread(fIn);
-        volTs_runOblique.vol = volTs_runOblique.vol(:,:,:,param.nDummy+1:end);
-        volTs_setPlumb.vol = volTs_runOblique.vol;
-        MRIwrite(volTs_setPlumb,fOut_plumb);
-        volTs_setPlumb.vol = mean(volTs_setPlumb.vol,4);
-        MRIwrite(volTs_setPlumb,fOut_av_plumb);
-        volTs_runOblique.vol = mean(volTs_runOblique.vol,4);
-        MRIwrite(volTs_runOblique,fOut_av_oblique);
+        mri_runOblique = MRIread(fIn);
+        mri_runOblique.vol = mri_runOblique.vol(:,:,:,param.nDummy+1:end);
+        mri_setPlumbRef.vol = mri_runOblique.vol;
+        MRIwrite(mri_setPlumbRef,fOut_plumb);
+        mri_setPlumbRef.vol = mean(mri_setPlumbRef.vol,4);
+        MRIwrite(mri_setPlumbRef,fOut_av_plumb);
+        mri_runOblique.vol = mean(mri_runOblique.vol,4);
+        MRIwrite(mri_runOblique,fOut_av_oblique);
         disp('   done')
     else
         disp('   already done, skipping')
@@ -153,18 +161,28 @@ fApplyList = fPlumbList;
 %% Multi-echo (cross-echo rms images for later motion/distortion estimation)
 
 %%% Detect multi-echo data if not specified in dataType
-if ~any(ismember({'multiEcho' 'singleEcho'},dataType))
-    tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
-    if ~isempty(tmp) && length(unique(tmp))>1
+tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
+if ~isempty(tmp) && length(unique(tmp))>1
     % if nnz(contains(fPlumbList,'echo-'))==length(fPlumbList)
-        dataType{end+1} = 'multiEcho';
-    else
-        dataType{end+1} = 'singleEcho';
-    end
-    disp([dataType{end} ' data detected'])
+    dataType{end+1} = 'multiEcho';
+    nEcho = length(tmp);
 else
-    disp([dataType{ismember(dataType,{'multiEcho' 'singleEcho'})} ' data specified'])
+    dataType{end+1} = 'singleEcho';
+    nEcho = 1;
 end
+disp([dataType{end} ' data detected'])
+% if ~any(ismember({'multiEcho' 'singleEcho'},dataType))
+%     tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
+%     if ~isempty(tmp) && length(unique(tmp))>1
+%     % if nnz(contains(fPlumbList,'echo-'))==length(fPlumbList)
+%         dataType{end+1} = 'multiEcho';
+%     else
+%         dataType{end+1} = 'singleEcho';
+%     end
+%     disp([dataType{end} ' data detected'])
+% else
+%     disp([dataType{ismember(dataType,{'multiEcho' 'singleEcho'})} ' data specified'])
+% end
 
 if ~any(ismember({'multiEcho'},dataType))
     %%% Single echo data
@@ -263,15 +281,15 @@ else
         if forceRecomputeRMS || ~exist(fOut,'file')
             [a,~] = fileparts(fOut); if ~exist(a,'dir'); mkdir(a); end
 
-            volTs = MRIread(fPlumbList{i,1},1);
-            volTs.vol = zeros([volTs.volsize volTs.nframes]);
+            mri = MRIread(fPlumbList{i,1},1);
+            mri.vol = zeros([mri.volsize mri.nframes]);
             for ii = 1:size(fPlumbList,2)
-                volTsTmp = MRIread(fPlumbList{i,ii});
-                volTs.vol = volTs.vol + volTsTmp.vol.^2;
+                mriTmp = MRIread(fPlumbList{i,ii});
+                mri.vol = mri.vol + mriTmp.vol.^2;
             end
-            volTs.vol = sqrt(volTs.vol./size(fPlumbList,2));
+            mri.vol = sqrt(mri.vol./size(fPlumbList,2));
 
-            MRIwrite(volTs,fOut);
+            MRIwrite(mri,fOut);
             disp('  done')
         else
             disp('  already done, skipping')
@@ -327,27 +345,36 @@ end
 
 %% QA: Visualize motion
 %%% between-run
-cmd = {srcFs};
-cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
-cmd = strjoin(cmd,newline); % disp(cmd)
-if param.verbose
-    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+if ~isempty(fEstimCatAv)
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewBR = cmd;
+else
+    fFslviewBR = '';
 end
-fFslviewBR = cmd;
 %%% within-run
-cmd = {srcFs};
-cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
-cmd = strjoin(cmd,newline); % disp(cmd)
-if param.verbose
-    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+if nframes>1
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' strjoin(fEstimList,' ') ' &'];
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if param.verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    fFslviewWR = cmd;
+    %%% within-run, first, middle and last frames
+    fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
+else
+    fFslviewWR = '';
+    fFslviewWRfstMdLst = '';
 end
-fFslviewWR = cmd;
-%%% within-run, first, middle and last frames
-fFslviewWRfstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb || forceRecomputeRMS,param.verbose);
 
-funcSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
-funcSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
-funcSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
+xSet.initFiles.qaFiles.fFslviewBR = fFslviewBR;
+xSet.initFiles.qaFiles.fFslviewWR = fFslviewWR;
+xSet.initFiles.qaFiles.fFslviewWRfstMdLst = fFslviewWRfstMdLst;
 
 
 
@@ -509,37 +536,38 @@ if any(ismember({'lowSNR'},dataType))
     %%% within-run, first, middle and last frames
     fFslviewWRsmFstMdLst = qaFstMdLst(fEstimList,forceRewriteAtPlumb||forceRecomputeRMS,param.verbose);
 
-    funcSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
-    funcSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
-    funcSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
+    xSet.initFiles.qaFilesSm.fFslviewBR = fFslviewBRsm;
+    xSet.initFiles.qaFilesSm.fFslviewWR = fFslviewWRsm;
+    xSet.initFiles.qaFilesSm.fFslviewWRfstMdLst = fFslviewWRsmFstMdLst;
 
 
 end
 
 
 %% Sumarize outputs
-funcSet.initFiles.fOrigList = fOrigList;
+xSet.nEcho = nEcho;
+xSet.initFiles.fOrigList = fOrigList;
 
-funcSet.initFiles.fPlumb = fPlumb;
-funcSet.initFiles.fPlumbList = fPlumbList;
-funcSet.initFiles.fPlumbAvList = fPlumbAvList;
-funcSet.initFiles.fPlumbCatAv = fPlumbCatAv;
-funcSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
+xSet.initFiles.fPlumbRef = fPlumbRef;
+xSet.initFiles.fPlumbList = fPlumbList;
+xSet.initFiles.fPlumbAvList = fPlumbAvList;
+xSet.initFiles.fPlumbCatAv = fPlumbCatAv;
+xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
 
-funcSet.initFiles.fEstimList = fEstimList;
-funcSet.initFiles.fEstimAvList = fEstimAvList;
-funcSet.initFiles.fEstimCatAv = fEstimCatAv;
-funcSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+xSet.initFiles.fEstimList = fEstimList;
+xSet.initFiles.fEstimAvList = fEstimAvList;
+xSet.initFiles.fEstimCatAv = fEstimCatAv;
+xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
 
-funcSet.initFiles.fApplyList = fApplyList;
+xSet.initFiles.fApplyList = fApplyList;
 
-funcSet.initFiles.fOblique = fOblique;
-funcSet.initFiles.fPlumb = fPlumb;
+xSet.initFiles.fOblique = fOblique;
+xSet.initFiles.fPlumb = fPlumbRef;
 
 %%% QA
 if exist('fFigSm','var')
-    funcSet.initFiles.qaFilesSm.fFigSm = fFigSm;
+    xSet.initFiles.qaFilesSm.fFigSm = fFigSm;
 end
 if exist('fFslviewSm','var')
-    funcSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
+    xSet.initFiles.qaFilesSm.fFslviewSm = fFslviewSm;
 end

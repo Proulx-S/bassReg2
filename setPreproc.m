@@ -27,8 +27,8 @@ param.tSmWin_vol = sm; % smoohting window size in number of volumes, must be odd
 % param.tSmWin_vol = ceil((18+39)/2.5); % smoohting window size in number of volumes, must be odd
 param.nDummy = 1;
 param.verbose = 0;
-dataType = 'lowSNR';
-forceThis = 0;
+dataType = {'lowSNR' 'volTs'};
+forceThis = force;%0;
 
 funcSet = initPreproc(funcSet,wDirFunc,[],dataType,param,forceThis);
 
@@ -79,10 +79,10 @@ end
 %%% Apply motion correction
 force;
 param.maskFile = funcSet.initFiles.manBrainMaskInv;
-imFiles = funcSet.initFiles.fPlumbList;
-motFiles = funcSet.wrMocoFiles.fMocoMatList;
+imFiles = funcSet.initFiles;
+motFiles = funcSet.wrMocoFiles;
 if isfield(funcSet,'brMocoFiles')
-    motFiles = cat(2,motFiles,funcSet.brMocoFiles.fMocoMatList);
+    motFiles.fMocoMatList = cat(2,motFiles.fMocoMatList,funcSet.brMocoFiles.fMocoMatList);
 end
 funcSet.preprocFiles = applyMotion(imFiles,motFiles,param,force);
 % funcSet.preprocFiles = addMaskToCmd(funcSet.preprocFiles,maskFile);

@@ -4,7 +4,7 @@ if isempty(force); force = 0; end
 
 %% Define all filenames
 fieldList1 = {'fCorrectedList' 'fCorrectedAvList'};
-fieldList2 = {'fList' 'fAvList'};
+fieldList2 = {'fList'          'fAvList'};
 for i = 1:length(fieldList1)
     fFinal.(fieldList2{i}) = cell(size(fPreproc.fOrig));
     for I = 1:numel(fPreproc.fOrig)
@@ -22,7 +22,9 @@ end
 
 fieldList1 = {'fCorrectedEchoRmsList' 'fCorrectedAvEchoRmsList' 'fCorrectedAvEchoCatList' 'fCorrectedEchoRmsList' 'fCorrectedAvEchoRmsList'};
 fieldList2 = {'fEchoRmsList'          'fAvEchoRmsList'          'fAvEchoCat'              'fEchoRms'              'fAvEchoRms'};
+clear fInListA2 fOutListA2
 for i = 1:length(fieldList1)
+    if ~isfield(fPreproc,fieldList1{i}); continue; end
     fFinal.(fieldList2{i}) = cell(size(fPreproc.(fieldList1{i})));
     for I = 1:size(fPreproc.(fieldList1{i}),1)
         fIn = fPreproc.(fieldList1{i}){I};
@@ -33,15 +35,22 @@ for i = 1:length(fieldList1)
         fOutListA2{I}{i} = fOut;
     end
 end
+for I = 1:length(fInListA2)
+    ind = cellfun('isempty',fInListA2{I});
+    fInListA2{I}(ind) = [];
+    fOutListA2{I}(ind) = [];
+end
+
 fInListA = cat(2,fInListA,fInListA2);
 fOutListA = cat(2,fOutListA,fOutListA2);
 
 
 fieldList1 = {'fCorrectedCatAv' 'fCorrectedAvCatAv'};
-fieldList2 = {'fCatAv' 'fAvCatAv'};
+fieldList2 = {'fCatAv'          'fAvCatAv'};
 fInListB = {};
 fOutListB = {};
 for i = 1:length(fieldList1)
+    if ~isfield(fPreproc,fieldList1{i}); continue; end
     for E = 1:size(fPreproc.(fieldList1{i}),2)
         fIn = fPreproc.(fieldList1{i}){E};
         fOut = replace(fIn,'setPlumb_',''); fOut = strsplit(fOut,filesep); fOut = strjoin([fOut(1:end-1) {'preproc'} fOut(end)],filesep); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
@@ -52,6 +61,7 @@ for i = 1:length(fieldList1)
     end
 end
 
+
 fieldList1 = {'fCorrectedAvCatAvEchoCat' 'fCorrectedCatAvEchoRmsList' 'fCorrectedAvCatAvEchoRmsList'};
 fieldList2 = {'fAvCatAvEchoCat'          'fCatAvEchoRms'             'fAvCatAvEchoRms'             };
 % fieldList1 = {'fCorrectedCatAvEchoRmsList' 'fCorrectedAvCatAvEchoRmsList' 'fCorrectedCatAvEchoCatList' 'fCorrectedAvCatAvEchoCatList'};
@@ -59,6 +69,7 @@ fieldList2 = {'fAvCatAvEchoCat'          'fCatAvEchoRms'             'fAvCatAvEc
 fInListB2 = {};
 fOutListB2 = {};
 for i = 1:length(fieldList1)
+    if ~isfield(fPreproc,fieldList1{i}); continue; end
         fIn = fPreproc.(fieldList1{i});
         fOut = replace(fIn,'setPlumb_',''); fOut = strsplit(fOut,filesep); fOut = strjoin([fOut(1:end-1) {'preproc'} fOut(end)],filesep); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
         fFinal.(fieldList2{i}) = fOut;
@@ -72,11 +83,11 @@ fOutListB = cat(2,fOutListB,fOutListB2);
 
 
 
-fInListB{end+1} = fInit.manBrainMask;
+fInListB{end+1} = fPreproc.manBrainMask;
 fOutListB{end+1} = replace(fInListB{end},'.nii.gz','Oblique.nii.gz');
 fFinal.manBrainMask = fOutListB{end};
 
-fInListB{end+1} = fInit.manBrainMaskInv;
+fInListB{end+1} = fPreproc.manBrainMaskInv;
 fOutListB{end+1} = replace(fInListB{end},'.nii.gz','Oblique.nii.gz');
 fFinal.manBrainMaskInv = fOutListB{end};
 
