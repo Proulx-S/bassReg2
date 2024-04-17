@@ -1,7 +1,7 @@
 function fFinal = finalizePreproc(fPreproc,fInit,force)
 if ~exist('force','var'); force = []; end
 if isempty(force);        force = 0; end
-if fPreproc.updatedFlag;  force = 1; end % override force=0 when preproc was updated
+if fPreproc.updatedFlag;  force = 1; end
 
 %% Define all filenames
 fieldList1 = {'fCorrected' 'fCorrectedAv'};

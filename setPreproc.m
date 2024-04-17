@@ -8,7 +8,7 @@ setInd = param.setInd;
 
 %% Initiate data
 sm = dir(fullfile(wDirFunc,funcSet.label,'*','*sm*.nii.gz')); sm = {sm.name}'; for i = 1:length(sm); sm{i} = strsplit(sm{i},'_'); sm(i) = sm{i}(contains(sm{i},'sm')); sm{i} = str2double(sm{i}(3:end)); end
-disp(unique([sm{:}])')
+% disp(unique([sm{:}])')
 
 % switch subInd
 %     case {1 2}
@@ -66,10 +66,10 @@ funcSet.wrMocoFiles = estimMotionWR(funcSet.wrMocoFiles,param,force);
 % system(changeCLim(funcSet.wrMocoFiles.qaFiles.fFslviewWRfstMdLst,[0 600]));
 
 %%% Between-run motion correction
-if size(funcSet.initFiles.fPlumbList,1)>1
+if size(funcSet.initFiles.fPlumb,1)>1
     force;
-    source = funcSet.wrMocoFiles.fMocoAvList;
-    base = funcSet.wrMocoFiles.fMocoAvList{1}; %!!! should allow to input the index to use as the base !!!%
+    source = funcSet.wrMocoFiles.fMocoAv;
+    base = funcSet.wrMocoFiles.fMocoAv{1}; %!!! should allow to input the index to use as the base !!!%
     mask = funcSet.wrMocoFiles.manBrainMaskInv;
     param.spSmFac = 0;
     funcSet.brMocoFiles = estimMotionBR(source,base,mask,param,force);
@@ -82,7 +82,8 @@ param.maskFile = funcSet.initFiles.manBrainMaskInv;
 imFiles = funcSet.initFiles;
 motFiles = funcSet.wrMocoFiles;
 if isfield(funcSet,'brMocoFiles')
-    motFiles.fMocoMatList = cat(2,motFiles.fMocoMatList,funcSet.brMocoFiles.fMocoMatList);
+    % catenate successive transformations in the 3rd dimension
+    motFiles.fMocoMat = cat(3,motFiles.fMocoMat,funcSet.brMocoFiles.fMocoMat);
 end
 funcSet.preprocFiles = applyMotion(imFiles,motFiles,param,force);
 % funcSet.preprocFiles = addMaskToCmd(funcSet.preprocFiles,maskFile);

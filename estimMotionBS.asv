@@ -166,8 +166,8 @@ else
     cmd = {srcFs};
     cmd{end+1} = 'freeview \';
     cmd{end+1} = [fBase ':name=' funcSetBase.label ' \'];
-    cmd{end+1} = [fSource ':name=' funcSetSource.label '_before:visible=0 \'];
-    cmd{end+1} = [fOut ':name=' funcSetSource.label '_after \'];
+    cmd{end+1} = [fSource ':name=' funcSetSource.label ':visible=0 \'];
+    cmd{end+1} = [fOut ' \'];
     cmd{end+1} = [fMaskInv ' &'];
 end
 

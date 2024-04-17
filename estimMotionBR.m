@@ -15,11 +15,11 @@ if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
 
 disp(['estimating between-run motion (moco to ' param.baseType ')'])
-files.fMocoList = cell(size(fSource));
-files.fMocoAvList = cell(size(fSource));
-files.fMocoParamList = cell(size(fSource));
-files.fMocoMatList = cell(size(fSource));
-files.fBaseList = cell(size(fSource));
+files.fMoco = cell(size(fSource));
+files.fMocoAv = cell(size(fSource));
+files.fMocoParam = cell(size(fSource));
+files.fMocoMat = cell(size(fSource));
+files.fBase = cell(size(fSource));
 files.manBrainMaskInv = fMask;
 for I = 1:numel(fSource)
     disp([' run' num2str(I) '/' num2str(length(fSource))])
@@ -82,15 +82,15 @@ for I = 1:numel(fSource)
     end
 
     %%% output files
-    files.fMocoList{I} = fOut;
-    files.fMocoParamList{I} = [fOutParam '.param.1D'];
-    files.fMocoMatList{I} = [fOutParam '.aff12.1D'];
-    files.fBaseList{I} = fBase;
+    files.fMoco{I} = fOut;
+    files.fMocoParam{I} = [fOutParam '.param.1D'];
+    files.fMocoMat{I} = [fOutParam '.aff12.1D'];
+    files.fBase{I} = fBase;
 end
 
 %%% write means
 cmd = {srcFs};
-fIn = files.fMocoList;
+fIn = files.fMoco;
 fOut = replace(fIn{1},char(regexp(fIn{1},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
 % fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
 if force || ~exist(fOut,'file')

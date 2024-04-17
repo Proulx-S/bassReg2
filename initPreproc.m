@@ -33,7 +33,7 @@ global srcFs srcAfni
 xSet.files = xSet.files(b);
 %%%% refactor
 dIn = xSet.files(1).folder;
-fOrigList = fullfile(dIn,{xSet.files.name}');
+fOrig = fullfile(dIn,{xSet.files.name}');
 label = xSet.label;
 bidsList = replace({xSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
 %%% dOut
@@ -44,11 +44,11 @@ if isempty(geomRef)
     if isfield(xSet,'fGeom') && ~isempty(xSet.fGeom)
         fRef = xSet.fGeom;
     else
-        fRef = fOrigList{1};
+        fRef = fOrig{1};
     end
 else
     if ~ischar(geomRef)
-        fRef = fOrigList{geomRef};
+        fRef = fOrig{geomRef};
     else
         fRef = geomRef;
     end
@@ -64,7 +64,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 disp('Rewriting data at plumb (consider using 3drefit -deobllique "https://discuss.afni.nimh.nih.gov/t/3drefit-deoblique/3303/2")')
 
 %%% Get oblique and plumb files
-disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' files)'])
+disp([' writing oblique and plumb references (for ' num2str(length(fOrig)) ' files)'])
 cmd = {srcAfni};
 %%%% reference
 fIn = fRef;
@@ -76,16 +76,16 @@ if forceRewriteAtPlumb || ~exist(fPlumbRef,'file')
     cmd{end+1} = ['-prefix ' fPlumbRef ' \'];
     cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
 end
-fOblique = fullfile(dOut,'setOblique_volRef.nii.gz');
-if forceRewriteAtPlumb || ~exist(fOblique,'file')
+fObliqueRef = fullfile(dOut,'setOblique_volRef.nii.gz');
+if forceRewriteAtPlumb || ~exist(fObliqueRef,'file')
     cmd{end+1} = '3dcalc -overwrite \';
     cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
     cmd{end+1} = ['-expr a \'];
-    cmd{end+1} = ['-prefix ' fOblique];
+    cmd{end+1} = ['-prefix ' fObliqueRef];
 end
 %%%% individual files
-for i = 1:length(fOrigList)
-    fIn = fOrigList{i};
+for i = 1:length(fOrig)
+    fIn = fOrig{i};
     nframes = MRIread(fIn,1); nframes = nframes.nframes; if nframes>8; nframes = 8; end
     fOut = replace(fIn,dIn,dOut); fOut = replace(fOut,'.nii.gz',''); if ~exist(fOut,'dir'); mkdir(fOut); end;
     fOut = fullfile(fOut,'runPlumb_volRef.nii.gz');
@@ -112,12 +112,12 @@ end
 %%% Rewrite at plumb (and means for later visualization)
 disp(' writing data (and means for later visualization)')
 mri_setPlumbRef = MRIread(fPlumbRef,1);
-fPlumb = cell(size(fOrigList));
-fPlumbAv = cell(size(fOrigList));
-for i = 1:numel(fOrigList)
-    disp(['  file' num2str(i) '/' num2str(numel(fOrigList))])
-    fIn = fOrigList{i};
-    fOut = replace(replace(fOrigList{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
+fPlumb = cell(size(fOrig));
+fPlumbAv = cell(size(fOrig));
+for i = 1:numel(fOrig)
+    disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
+    fIn = fOrig{i};
+    fOut = replace(replace(fOrig{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
     if any(ismember(dataType,'volTs'))
         fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
         fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
@@ -148,11 +148,6 @@ for i = 1:numel(fOrigList)
 end
 
 
-%% Data on which to apply motion correction
-fApply = fPlumb;
-
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Prepare data for motion estimation %
@@ -163,7 +158,7 @@ fApply = fPlumb;
 %%% Detect multi-echo data if not specified in dataType
 tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
 if ~isempty(tmp) && length(unique(tmp))>1
-    % if nnz(contains(fPlumbList,'echo-'))==length(fPlumbList)
+    % if nnz(contains(fPlumb,'echo-'))==length(fPlumb)
     dataType{end+1} = 'multiEcho';
     nEcho = length(tmp);
 else
@@ -174,7 +169,7 @@ disp([dataType{end} ' data detected'])
 % if ~any(ismember({'multiEcho' 'singleEcho'},dataType))
 %     tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
 %     if ~isempty(tmp) && length(unique(tmp))>1
-%     % if nnz(contains(fPlumbList,'echo-'))==length(fPlumbList)
+%     % if nnz(contains(fPlumb,'echo-'))==length(fPlumb)
 %         dataType{end+1} = 'multiEcho';
 %     else
 %         dataType{end+1} = 'singleEcho';
@@ -227,7 +222,7 @@ else
     bidsList = permute(reshape(bidsList,size(bidsList,1),length(echoUniqueList),length(echoList)/length(echoUniqueList)),[1 3 2]);
     fPlumb = reshape(fPlumb,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
     fPlumbAv = reshape(fPlumbAv,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
-    fOrigList = reshape(fOrigList,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
+    fOrig = reshape(fOrig,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
 
     disp('---------------------------------------------------')
     disp('---------------------------------------------------')
@@ -340,6 +335,10 @@ else
     end
 end
 
+
+
+%% Data on which to apply motion correction
+fApply = fPlumb;
 
 
 
@@ -546,7 +545,7 @@ end
 
 %% Sumarize outputs
 xSet.nEcho = nEcho;
-xSet.initFiles.fOrigList = fOrigList;
+xSet.initFiles.fOrig = fOrig;
 
 xSet.initFiles.fPlumbRef = fPlumbRef;
 xSet.initFiles.fPlumb = fPlumb;
@@ -556,12 +555,20 @@ xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
 
 xSet.initFiles.fEstim = fEstim;
 xSet.initFiles.fEstimAv = fEstimAv;
-xSet.initFiles.fEstimCatAv = fEstimCatAv;
-xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+if iscell(fEstimCatAv)
+    xSet.initFiles.fEstimCatAv = fEstimCatAv;
+else
+    xSet.initFiles.fEstimCatAv = {fEstimCatAv};
+end
+if iscell(fEstimAvCatAv)
+    xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+else
+    xSet.initFiles.fEstimAvCatAv = {fEstimAvCatAv};
+end
 
 xSet.initFiles.fApply = fApply;
 
-xSet.initFiles.fOblique = fOblique;
+xSet.initFiles.fObliqueRef = fObliqueRef;
 xSet.initFiles.fPlumbRef = fPlumbRef;
 
 %%% QA

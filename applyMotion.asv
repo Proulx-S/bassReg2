@@ -25,12 +25,12 @@ if iscell(fMot)
         files.fTransLabel{1,1,i} = strsplit(files.fTransLabel{1,1,i},'_'); files.fTransLabel{1,1,i} = files.fTransLabel{1,1,i}{1};
     end
 else
-    files.fTrans      = fMot.fMocoMat;
-    files.fTransLabel = cell([1 1 size(fMot.fMocoMat,3)]);
+    files.fTrans = fMot.fMocoMat;
     for i = 1:size(fMot.fMocoMat,3)
-        [~,files.fTransLabel{1,1,i}] = fileparts(fMot.fMocoMat{1,1,i});
-        files.fTransLabel{1,1,i} = strsplit(files.fTransLabel{1,1,i},'_'); files.fTransLabel{1,1,i} = files.fTransLabel{1,1,i}{1};
-    end
+    
+    [~,files.fTransLabel{1,1,i}] = fileparts(fMot.fMocoMat{1});
+    files.fTransLabel{1,1,i} = strsplit(files.fTransLabel{1,1,i},'_'); files.fTransLabel{1,1,i} = files.fTransLabel{1,1,i}{1};
+    % files.fTransLabel = 
 end
 files.fTransCat = cell(size(fMri.fPlumb));
 [nRun,nEcho] = size(files.fOrig);
@@ -356,8 +356,8 @@ end
 bsFlag = files.fTrans; if iscell(bsFlag); bsFlag = bsFlag{1}; end; bsFlag = strsplit(bsFlag,filesep); bsFlag = bsFlag{end};
 bsFlag = contains(bsFlag,'mcBS_');
 if bsFlag
-    fBase = fMot.fBase{1};
-    fSource = fMot.fMoco{1};
+    fBase = fMot.fBase;
+    fSource = fMot.fMoco;
     if nEcho>1
         fOut = {'fCorrectedAvEchoRms' 'fCorrectedEchoRms'};
     else
