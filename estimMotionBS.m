@@ -16,8 +16,8 @@ explicitlyFixThroughPlane = 0;
 spSmFac = 0;
 
 %% Define files and param
-[fBase,fMask,fMaskInv] = autoSelect(funcSetBase,baseRunInd);
-fSource = autoSelect(funcSetSource,sourceRunInd);
+[fBase,fBaseMask,fBaseMaskInv] = autoSelect(funcSetBase,baseRunInd);
+[fSource,fSourceMask,~]        = autoSelect(funcSetSource,sourceRunInd);
 vsize = MRIread(fBase,1); vsize = mean([vsize.xsize vsize.ysize]);
 fOut = strsplit(fSource,filesep); fOut{end} = ['mcBS_' fOut{end}]; fOut = strjoin(fOut,filesep);
 fOutParam = replace(fOut,'.nii.gz','');
@@ -67,11 +67,17 @@ afni3dAlineateArg = {['-cost ' cost] '-interp quintic' '-final wsinc5'};
 % % afni3dAlineateArg = {'-cost nmi+ZZ' '-interp quintic' '-final wsinc5'};
 % % afni3dAlineateArg = {'-cost nmi+' '-interp quintic' '-final wsinc5'};
 cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
-if ~isempty(fMaskInv)
-    disp([' using mask: ' fMaskInv])
-    cmd{end+1} = ['-emask ' fMaskInv ' \'];
+if ~isempty(fBaseMaskInv)
+    disp([' using exclusion mask on base: ' fBaseMaskInv])
+    cmd{end+1} = ['-emask ' fBaseMaskInv ' \'];
 else
-    disp(' not using mask')
+    disp(' not using exclusion mask on base')
+end
+if ~isempty(fSourceMask)
+    disp([' using inclusion mask on source: ' fSourceMask])
+    cmd{end+1} = ['-source_mask ' fSourceMask ' \'];
+else
+    disp(' not using inclusion mask on source')
 end
 if explicitlyFixThroughPlane
     cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
@@ -121,18 +127,20 @@ if force || ~exist([fOutParam '.aff12.1D'],'file')
     else
         [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
     end
-    disp([' source : ' fSource])
-    disp([' base   : ' fBase])
-    disp([' mask   : ' fMaskInv])
-    disp([' outputs: ' fOut])
-    disp(['           ' fOutParam '.aff12.1D'])
+    disp([' source       : ' fSource])
+    disp([' base         : ' fBase])
+    disp([' mask (base)  : ' fBaseMaskInv])
+    disp([' mask (source): ' fSourceMask])
+    disp([' outputs      : ' fOut])
+    disp(['                ' fOutParam '.aff12.1D'])
     disp('done')
 else
-    disp([' source : ' fSource])
-    disp([' base   : ' fBase])
-    disp([' mask   : ' fMaskInv])
-    disp([' outputs: ' fOut])
-    disp(['          ' fOutParam '.aff12.1D'])
+    disp([' source       : ' fSource])
+    disp([' base         : ' fBase])
+    disp([' mask (base)  : ' fBaseMaskInv])
+    disp([' mask (source): ' fSourceMask])
+    disp([' outputs      : ' fOut])
+    disp(['                ' fOutParam '.aff12.1D'])
     disp(' already done, skipping')
 end
 
@@ -141,8 +149,9 @@ files.fMoco = {fSource};
 files.fMocoParam = {[fOutParam '.param.1D']};
 files.fMocoMat = {[fOutParam '.aff12.1D']};
 files.fBase = {fBase};
-files.manBrainMaskInv = fMaskInv;
-files.manBrainMask = fMask;
+files.manBrainMaskInv = fBaseMaskInv;
+files.manBrainMask = fBaseMask;
+files.manBrainMask_source = fSourceMask;
 if sameGridFlag
     files.fCatBefore = fCatBefore;
     files.fCatAfter = fCatAfter;
@@ -161,14 +170,14 @@ if sameGridFlag
     end
     cmd{end+1} = [fCatBefore ' \'];
     cmd{end+1} = [fCatAfter ' \'];
-    cmd{end+1} = [fMaskInv ' &'];
+    cmd{end+1} = [fBaseMaskInv ' &'];
 else
     cmd = {srcFs};
     cmd{end+1} = 'freeview \';
     cmd{end+1} = [fBase ':name=' funcSetBase.label ' \'];
     cmd{end+1} = [fSource ':name=' funcSetSource.label '_before:visible=0 \'];
     cmd{end+1} = [fOut ':name=' funcSetSource.label '_after \'];
-    cmd{end+1} = [fMaskInv ' &'];
+    cmd{end+1} = [fBaseMaskInv ' &'];
 end
 
 

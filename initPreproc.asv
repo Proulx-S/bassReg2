@@ -1,8 +1,16 @@
-function xSet = initPreproc(xSet,dOut,geomRef,param,force)
-if ~exist('force','var');        force = []       ; end
-if ~isfield(xSet,'dataType'); dataType = {}       ; else; dataType = xSet.dataType; end
-if isempty(force);               force = 0        ; end
-if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
+function xSet = initPreproc(xSet,dOut,geomRef,dataType,param,force)
+if ~exist('force','var');    force    = []; end
+if ~isfield(xSet,'dataType'); xSet.dataType = {}; end
+if ~exist('dataType','var'); dataType = {}; end % 'vol' or 'volTs'
+dataType = 
+
+% override dataType
+if isfield(xSet,'dataType'); dataType = xSet.dataType; end
+
+if isempty(force);    force    = 0        ; end
+if isempty(dataType); dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
+
+
 
 
 
@@ -60,7 +68,7 @@ disp('Rewriting data at plumb (consider using 3drefit -deobllique "https://discu
 %%% Get oblique and plumb files
 disp([' writing oblique and plumb references (for ' num2str(length(fOrig)) ' files)'])
 cmd = {srcAfni};
-%%%% references
+%%%% reference
 fIn = fRef;
 nframes = MRIread(fIn,1); nframes = nframes.nframes; if nframes>8; nframes = 8; end
 fPlumbRef = fullfile(dOut,'setPlumb_volRef.nii.gz');
@@ -547,7 +555,6 @@ end
 
 %% Sumarize outputs
 [nRun,nEcho] = size(fOrig);
-xSet.dataType = dataType;
 xSet.nRun = nRun;
 xSet.nEcho = nEcho;
 xSet.nFrame = nFrame;

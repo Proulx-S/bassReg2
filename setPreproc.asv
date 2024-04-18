@@ -49,7 +49,7 @@ if funcSet.nFrame>1
         ts = permute(mri.vol,[4 1 2 3]); ts = mean(ts(:,:),2);
         t = mri.tr/1000; t = 0:t:t*(mri.nframes-1);
         figure('WindowStyle','docked');
-        plot(t,ts,'-o'); xlabel('sec'); ylabel('means signal'); grid on; title(funcSet.files(1).name,'Interpreter','none')
+        plot(t,ts); xlabel('sec'); ylabel('means signal'); grid on; title(funcSet.files(1).name,'')
         dbstack; error(['please specify funcSet.nDummy for ' funcSet.label])
     end
     param.verbose = 0;

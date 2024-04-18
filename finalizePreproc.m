@@ -36,14 +36,16 @@ for i = 1:length(fieldList1)
         fOutListA2{I}{i} = fOut;
     end
 end
-for I = 1:length(fInListA2)
-    ind = cellfun('isempty',fInListA2{I});
-    fInListA2{I}(ind) = [];
-    fOutListA2{I}(ind) = [];
-end
+if exist('fInListA2','var') && exist('fOutListA2','var')
+    for I = 1:length(fInListA2)
+        ind = cellfun('isempty',fInListA2{I});
+        fInListA2{I}(ind) = [];
+        fOutListA2{I}(ind) = [];
+    end
 
-fInListA = cat(2,fInListA,fInListA2);
-fOutListA = cat(2,fOutListA,fOutListA2);
+    fInListA = cat(2,fInListA,fInListA2);
+    fOutListA = cat(2,fOutListA,fOutListA2);
+end
 
 
 fieldList1 = {'fCorrectedCatAv' 'fCorrectedAvCatAv'};
@@ -93,14 +95,22 @@ fOutListB{end+1} = replace(fInListB{end},'.nii.gz','Oblique.nii.gz');
 fFinal.manBrainMaskInv = fOutListB{end};
 
 %% Rewrite all to oblique
-mri = MRIread(fInit.fObliqueRef,1);
+obliqueRef = MRIread(fInit.fObliqueRef,1);
 disp('writing back to set oblique (for visualization with other images)')
 for I = 1:length(fInListA)
     disp([' file ' num2str(I) '/' num2str(length(fInListA))])
     for i = 1:length(fInListA{I})
         if force || ~exist(fOutListA{I}{i},'file')
-            mriTmp = MRIread(fInListA{I}{i});
-            mri.vol = mriTmp.vol;
+            mriTmp     = MRIread(fInListA{I}{i});
+            mri        = obliqueRef;
+            mri.vol    = mriTmp.vol;
+            mri.xsize  = mriTmp.xsize;
+            mri.ysize  = mriTmp.ysize;
+            mri.zsize  = mriTmp.zsize;
+            mri.volres = mriTmp.volres;
+            mri.tr     = mriTmp.tr;
+            mri.te     = mriTmp.te;
+            mri.ti     = mriTmp.ti;
             MRIwrite(mri,fOutListA{I}{i});
         end
         disp(['  in : ' fInListA{I}{i}])
@@ -112,8 +122,8 @@ disp(' runCat')
 for i = 1:length(fInListB)
     if force || ~exist(fOutListB{i},'file')
         mriTmp = MRIread(fInListB{i});
-        mri.vol = mriTmp.vol;
-        MRIwrite(mri,fOutListB{i});
+        obliqueRef.vol = mriTmp.vol;
+        MRIwrite(obliqueRef,fOutListB{i});
     end
     disp(['  in : ' fInListB{i}])
     disp(['  out: ' fOutListB{i}])

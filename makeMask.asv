@@ -28,20 +28,19 @@ if force || ~exist(files.manBrainMask,'file')
     movefile(fOut,files.manBrainMask)
 end
 
-% %% Use synthstrip
-% fOutAuto = replace(fOut,'-mask.nii.gz','-autoMask.nii.gz');
-% cmd = {srcAfni};
-% fTmp = [tempname '.nii.gz'];
-% cmd{end+1} = '3dTstat -overwrite -mean \';
-% cmd{end+1} = ['-prefix ' fTmp ' \'];
-% cmd{end+1} = char(files.fOrig);
-% cmd{end+1} = srcFs;
-% cmd{end+1} = 'mri_synthstrip \';
-% cmd{end+1} = ['-i ' fTmp ' \'];
-% cmd{end+1} = ['-m ' fOutAuto];
-% cmd = strjoin(cmd,newline);
-% system(cmd,'-echo')
+%% Use synthstrip
+fOutAuto = replace(fOut,'-mask.nii.gz','-autoMask.nii.gz');
+cmd = {srcAfni};
+cmd{end+1} = 'mri_convert \';
+cmd{end+1} = {srcFs};
+cmd{end+1} = 'mri_synthstrip \';
+cmd{end+1} = ['-i ' char(files.fOrig) ' \'];
+cmd{end+1} = ['-m ' fOutAuto];
+cmd = strjoin(cmd,newline);
+system(cmd,'-echo')
 
+    mri_synthstrip -i -m 
+/autofs/space/takoyaki_001/users/proulxs/seqDev/satin/doIt_satinPip01/sub-pilot02/ses-1/func/set-bold/sub-pilot02_ses-1_run-catAv_task-vis_acq-refV400,shimA_flip-30_bold/setPlumb_volTs.nii.gz
 
 %% Invert mask
 files.manBrainMaskInv = replace(files.manBrainMask,'.nii.gz','Inv.nii.gz');
