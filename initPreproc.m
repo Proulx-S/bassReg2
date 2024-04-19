@@ -1,8 +1,10 @@
 function xSet = initPreproc(xSet,dOut,geomRef,param,force)
 if ~exist('force','var');        force = []       ; end
 if ~isfield(xSet,'dataType'); dataType = {}       ; else; dataType = xSet.dataType; end
+if ~isfield(param,'verbose');  verbose = []       ; else; verbose = param.verbose; end
 if isempty(force);               force = 0        ; end
 if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
+if isempty(verbose);           verbose = 0        ; end
 
 
 
@@ -55,7 +57,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 
 
 %% Rewrite data at plumb without dummies
-disp('Rewriting data at plumb (consider using 3drefit -deobllique "https://discuss.afni.nimh.nih.gov/t/3drefit-deoblique/3303/2")')
+disp('Rewriting data at plumb')
 
 %%% Get oblique and plumb files
 disp([' writing oblique and plumb references (for ' num2str(length(fOrig)) ' files)'])
@@ -65,17 +67,31 @@ fIn = fRef;
 nframes = MRIread(fIn,1); nframes = nframes.nframes; if nframes>8; nframes = 8; end
 fPlumbRef = fullfile(dOut,'setPlumb_volRef.nii.gz');
 if forceRewriteAtPlumb || ~exist(fPlumbRef,'file')
-    cmd{end+1} = '3dNwarpApply -overwrite \';
-    cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
-    cmd{end+1} = ['-prefix ' fPlumbRef ' \'];
-    cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
+    cmd{end+1} = '3dcalc -overwrite \';
+    cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
+    cmd{end+1} = '-expr a \';
+    if verbose
+        cmd{end+1} = ['-prefix ' fPlumbRef ' > /dev/null 2>&1'];
+        cmd{end+1} = ['3drefit -deoblique ' fPlumbRef ' > /dev/null 2>&1'];
+    else
+        cmd{end+1} = ['-prefix ' fPlumbRef];
+        cmd{end+1} = ['3drefit -deoblique ' fPlumbRef];
+    end
+    % cmd{end+1} = '3dNwarpApply -overwrite \';
+    % cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
+    % cmd{end+1} = ['-prefix ' fPlumbRef ' \'];
+    % cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
 end
 fObliqueRef = fullfile(dOut,'setOblique_volRef.nii.gz');
 if forceRewriteAtPlumb || ~exist(fObliqueRef,'file')
     cmd{end+1} = '3dcalc -overwrite \';
     cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
     cmd{end+1} = ['-expr a \'];
-    cmd{end+1} = ['-prefix ' fObliqueRef];
+    if verbose
+        cmd{end+1} = ['-prefix ' fObliqueRef ' > /dev/null 2>&1'];
+    else
+        cmd{end+1} = ['-prefix ' fObliqueRef];
+    end
 end
 %%%% individual files
 for i = 1:length(fOrig)
@@ -85,17 +101,31 @@ for i = 1:length(fOrig)
     fOut = replace(fIn,dIn,dOut); fOut = replace(fOut,'.nii.gz',''); if ~exist(fOut,'dir'); mkdir(fOut); end;
     fOut = fullfile(fOut,'runPlumb_volRef.nii.gz');
     if forceRewriteAtPlumb || ~exist(fOut,'file')
-        cmd{end+1} = '3dNwarpApply -overwrite \';
-        cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
-        cmd{end+1} = ['-prefix ' fOut ' \'];
-        cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
+        cmd{end+1} = '3dcalc -overwrite \';
+        cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
+        cmd{end+1} = ['-expr a \'];
+        if verbose
+            cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
+            cmd{end+1} = ['3drefit -deoblique ' fOut ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = ['-prefix ' fOut];
+            cmd{end+1} = ['3drefit -deoblique ' fOut];
+        end
+        % cmd{end+1} = '3dNwarpApply -overwrite \';
+        % cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
+        % cmd{end+1} = ['-prefix ' fOut ' \'];
+        % cmd{end+1} = ['-source ' fIn '[0..' num2str(nframes-1) ']'];
     end
     fOut = replace(fOut,'runPlumb_volRef.nii.gz','runOblique_volRef.nii.gz');
     if forceRewriteAtPlumb || ~exist(fOut,'file')
         cmd{end+1} = '3dcalc -overwrite \';
         cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
         cmd{end+1} = ['-expr a \'];
-        cmd{end+1} = ['-prefix ' fOut];
+        if verbose
+            cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = ['-prefix ' fOut];
+        end
     end
 end
 
@@ -106,16 +136,19 @@ nFrame = nFrame(1);
 %%%% launch command
 if length(cmd)>1
     cmd = strjoin(cmd,newline); % disp(cmd)
-    [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+    [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
 end
 
-%%% Rewrite at plumb (and means for later visualization)
+
+
+%%% Rewrite at plumb (and means for later visualization) --- 3drefit -deoblique
 disp(' writing data (and means for later visualization)')
-mri_setPlumbRef = MRIread(fPlumbRef,1);
 fPlumb = cell(size(fOrig));
 fPlumbAv = cell(size(fOrig));
+cmd = {srcAfni};
 for i = 1:numel(fOrig)
-    disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
+    % disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
+
     fIn = fOrig{i};
     fOut = replace(replace(fOrig{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
     if any(ismember(dataType,'volTs'))
@@ -129,23 +162,139 @@ for i = 1:numel(fOrig)
     else
         dbstack; error(['don''t know which suffix to give' newline 'please set ''vol'' or ''volTs'' as dataType'])
     end
+
+    cmd{end+1} = ['echo ''  ''file ' num2str(i) '/' num2str(numel(fOrig))];
     if forceRewriteAtPlumb || ...
             any([~exist(fOut_plumb,'file') ~exist(fOut_av_plumb,'file') ~exist(fOut_av_oblique,'file')])
-        mri_runOblique = MRIread(fIn);
-        mri_runOblique.vol = mri_runOblique.vol(:,:,:,param.nDummy+1:end);
-        mri_setPlumbRef.vol = mri_runOblique.vol;
-        MRIwrite(mri_setPlumbRef,fOut_plumb);
-        mri_setPlumbRef.vol = mean(mri_setPlumbRef.vol,4);
-        MRIwrite(mri_setPlumbRef,fOut_av_plumb);
-        mri_runOblique.vol = mean(mri_runOblique.vol,4);
-        MRIwrite(mri_runOblique,fOut_av_oblique);
-        disp('   done')
+        cmd{end+1} = ['cp ' fIn ' ' fOut_plumb];
+        if verbose
+            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb];
+        end
+        
+        cmd{end+1} = '3dTstat -overwrite \';
+        cmd{end+1} = '-mean \';
+        cmd{end+1} = ['-prefix ' fOut_av_plumb ' \'];
+        if verbose
+            cmd{end+1} = [fOut_plumb ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = fOut_plumb;
+        end
+
+        cmd{end+1} = '3dTstat -overwrite \';
+        cmd{end+1} = '-mean \';
+        cmd{end+1} = ['-prefix ' fOut_av_oblique ' \'];
+        if verbose
+            cmd{end+1} = [fIn ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = fIn;
+        end
+
+        cmd{end+1} = ['echo ''   ''done'];
     else
-        disp('   already done, skipping')
+        cmd{end+1} = ['echo ''   ''already done,skipping'];
     end
     fPlumb{i} = fOut_plumb;
     fPlumbAv{i} = fOut_av_plumb;
 end
+
+if length(cmd)>1
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+end
+
+
+
+% %%% Rewrite at plumb (and means for later visualization) --- 3dWarpApply -nwarp IDENT
+% disp(' writing data (and means for later visualization)')
+% fPlumb = cell(size(fOrig));
+% fPlumbAv = cell(size(fOrig));
+% cmd = {srcAfni};
+% for i = 1:numel(fOrig)
+%     % disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
+% 
+%     fIn = fOrig{i};
+%     fOut = replace(replace(fOrig{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
+%     if any(ismember(dataType,'volTs'))
+%         fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
+%         fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
+%         fOut_av_oblique = fullfile(fOut,'av_runOblique_volTs.nii.gz'); clear fOut
+%     elseif any(ismember(dataType,'vol'))
+%         fOut_plumb = fullfile(fOut,'setPlumb_vol.nii.gz');
+%         fOut_av_plumb = fullfile(fOut,'av_setPlumb_vol.nii.gz');
+%         fOut_av_oblique = fullfile(fOut,'av_runOblique_vol.nii.gz'); clear fOut
+%     else
+%         dbstack; error(['don''t know which suffix to give' newline 'please set ''vol'' or ''volTs'' as dataType'])
+%     end
+% 
+%     cmd{end+1} = ['echo ''  ''file ' num2str(i) '/' num2str(numel(fOrig))];
+%     if forceRewriteAtPlumb || ...
+%             any([~exist(fOut_plumb,'file') ~exist(fOut_av_plumb,'file') ~exist(fOut_av_oblique,'file')])
+%         cmd{end+1} = '3dNwarpApply -overwrite -quiet \';
+%         cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
+%         cmd{end+1} = ['-prefix ' fOut_plumb ' \'];
+%         cmd{end+1} = ['-source ' fIn];
+% 
+%         cmd{end+1} = '3dTstat -overwrite \';
+%         cmd{end+1} = '-mean \';
+%         cmd{end+1} = ['-prefix ' fOut_av_plumb ' \'];
+%         cmd{end+1} = ['-source ' fOut_plumb];
+% 
+%         cmd{end+1} = '3dTstat -overwrite \';
+%         cmd{end+1} = '-mean \';
+%         cmd{end+1} = ['-prefix ' fOut_av_oblique ' \'];
+%         cmd{end+1} = ['-source ' fIn];
+% 
+%         cmd{end+1} = ['echo ''   ''done'];
+%     else
+%         cmd{end+1} = ['echo ''   ''already done,skipping'];
+%     end
+%     fPlumb{i} = fOut_plumb;
+%     fPlumbAv{i} = fOut_av_plumb;
+% end
+% 
+% if length(cmd)>1
+%     cmd = strjoin(cmd,newline); % disp(cmd)
+%     [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+% end
+
+% %%% Rewrite at plumb (and means for later visualization) --- MRIread MRIwrite
+% mri_setPlumbRef = MRIread(fPlumbRef,1);
+% fPlumb = cell(size(fOrig));
+% fPlumbAv = cell(size(fOrig));
+% for i = 1:numel(fOrig)
+%     disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
+%     fIn = fOrig{i};
+%     fOut = replace(replace(fOrig{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
+%     if any(ismember(dataType,'volTs'))
+%         fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
+%         fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
+%         fOut_av_oblique = fullfile(fOut,'av_runOblique_volTs.nii.gz'); clear fOut
+%     elseif any(ismember(dataType,'vol'))
+%         fOut_plumb = fullfile(fOut,'setPlumb_vol.nii.gz');
+%         fOut_av_plumb = fullfile(fOut,'av_setPlumb_vol.nii.gz');
+%         fOut_av_oblique = fullfile(fOut,'av_runOblique_vol.nii.gz'); clear fOut
+%     else
+%         dbstack; error(['don''t know which suffix to give' newline 'please set ''vol'' or ''volTs'' as dataType'])
+%     end
+%     if forceRewriteAtPlumb || ...
+%             any([~exist(fOut_plumb,'file') ~exist(fOut_av_plumb,'file') ~exist(fOut_av_oblique,'file')])
+%         mri_runOblique = MRIread(fIn);
+%         mri_runOblique.vol = mri_runOblique.vol(:,:,:,param.nDummy+1:end);
+%         mri_setPlumbRef.vol = mri_runOblique.vol;
+%         MRIwrite(mri_setPlumbRef,fOut_plumb);
+%         mri_setPlumbRef.vol = mean(mri_setPlumbRef.vol,4);
+%         MRIwrite(mri_setPlumbRef,fOut_av_plumb);
+%         mri_runOblique.vol = mean(mri_runOblique.vol,4);
+%         MRIwrite(mri_runOblique,fOut_av_oblique);
+%         disp('   done')
+%     else
+%         disp('   already done, skipping')
+%     end
+%     fPlumb{i} = fOut_plumb;
+%     fPlumbAv{i} = fOut_av_plumb;
+% end
 
 
 
@@ -437,7 +586,11 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
             cmd{end+1} = '3dTsmooth -overwrite \';
             cmd{end+1} = ['-prefix ' fOut ' \'];
             cmd{end+1} = ['-hamming ' num2str(param.tSmWin_vol) ' \'];
-            cmd{end+1} = fIn;
+            if verbose
+                cmd{end+1} = fIn;
+            else
+                cmd{end+1} = [fIn ' > /dev/null 2>&1'];
+            end
         else
             cmd{end+1} = ['echo ''  ''already smoothed, skipping'];
         end

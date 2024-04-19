@@ -292,7 +292,6 @@ if meFlag
 
     %%%%% catenate cross-echo rms
     fSes_echoCat.rms.fResp = fSes_echoRms.fResp;
-    fSes_echoCat.rms.fBase = fSes_echoRms.fBase;
     fSes_echoCat.rms.fRespOnBase = fSes_echoRms.fRespOnBase;
     fSes_echoCat.rms.fRespOnBaseMovie = fSes_echoRms.fRespOnBaseMovie;
     fSes_echoCat.rms.fRespOnBaseMovieHighBit = fSes_echoRms.fRespOnBaseMovieHighBit;
@@ -343,11 +342,9 @@ if meFlag
     for E = 1:length(fSes_echoCat.fResp)
         tmp = strsplit(fSes_echoCat.fResp{E},'_');
         cmd{end+1} = [fSes_echoCat.fResp{E} ':name=' tmp{contains(tmp,'echo-')} '_resp:visible=0 \'];
-        cmd{end+1} = [fSes_echoCat.fBase{E} ':name=' tmp{contains(tmp,'echo-')} '_base:visible=0 \'];
         cmd{end+1} = [fSes_echoCat.fRespOnBase{E} ':name=' tmp{contains(tmp,'echo-')} '_respOnBase:visible=0 \'];
     end
     cmd{end+1} = [fSes_echoCat.rms.fResp ':name=echo-rms_resp:visible=0 \'];
-    cmd{end+1} = [fSes_echoCat.rms.fBase ':name=echo-rms_base:visible=0 \'];
     cmd{end+1} = [fSes_echoCat.rms.fRespOnBase ':name=echo-rms_respOnBase:visible=0 \'];
     if ~isempty(fSatinIndexPlus_echoRms)
         cmd{end+1} = [fSatinIndexPlus_echoRms ':resample=cubic:name=echo-rms_satIndexNumPlusBack:visible=0 \'];

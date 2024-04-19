@@ -38,7 +38,6 @@ for S = 1:length(xSet)
             fOut = fOut{end};
             fOutS0  = replace(replace(replace(fOut,'_volTs.nii.gz','_S0.nii.gz') ,'_vol.nii.gz','_S0.nii.gz' ),'_respOnBase.nii.gz','_respOnBaseS0.nii.gz' ); fOutS0  = fullfile(dOut,fOutS0);
             fOutT2s = replace(replace(replace(fOut,'_volTs.nii.gz','_T2s.nii.gz'),'_vol.nii.gz','_T2s.nii.gz'),'_respOnBase.nii.gz','_respOnBaseT2s.nii.gz'); fOutT2s = fullfile(dOut,fOutT2s);
-            fOutR2s = replace(replace(replace(fOut,'_volTs.nii.gz','_R2s.nii.gz'),'_vol.nii.gz','_R2s.nii.gz'),'_respOnBase.nii.gz','_respOnBaseR2s.nii.gz'); fOutR2s = fullfile(dOut,fOutR2s);
 
 
             if force || ~exist(fOutS0,'file') || ~exist(fOutT2s,'file')
@@ -65,28 +64,22 @@ for S = 1:length(xSet)
                 for t = 1:size(imME,5)
                     [mriT2s.vol(:,:,:,t),mriS0.vol(:,:,:,t)] = calc_t2s_vol(imME(:,:,:,:,t), TE*1000, nneg, verbose);
                 end
-                mriR2s.vol = 1./mriT2s.vol;
                 mriT2s.vol(isnan(mriT2s.vol)) = 0;
                 mriS0.vol(isnan(mriS0.vol)) = 0;
-                mriR2s.vol(isnan(mriR2s.vol)) = 0;
                 disp(' writting')
-                disp(['  S0 : ' fOutS0])
-                MRIwrite(mriS0,fOutS0);
                 disp(['  T2*: ' fOutT2s])
                 MRIwrite(mriT2s,fOutT2s);
-                disp(['  R2*: ' fOutR2s])
-                MRIwrite(mriR2s,fOutR2s);
+                disp(['  S0 : ' fOutS0])
+                MRIwrite(mriS0,fOutS0);
                 disp(' done')
             else
-                disp(['  S0 : ' fOutS0])
                 disp(['  T2*: ' fOutT2s])
-                disp(['  R2*: ' fOutR2s])
+                disp(['  S0 : ' fOutS0])
                 disp(' already done, skipping')
             end
 
-            eval(['xSet{' num2str(S) '}.' fieldList{ii} 'S0 = {fOutS0};']);
-            eval(['xSet{' num2str(S) '}.' fieldList{ii} 'T2s = {fOutT2s};']);
-            eval(['xSet{' num2str(S) '}.' fieldList{ii} 'R2s = {fOutR2s};']);
+            eval(['xSet{' num2str(S) '}.' fieldList{ii} 'S0 = fOutS0;']);
+            eval(['xSet{' num2str(S) '}.' fieldList{ii} 'T2s = fOutT2s;']);
             % xSet{S}.finalFiles.([fieldList{ii} 'T2s']) = fOutT2s;
         end
     end
