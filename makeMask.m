@@ -4,11 +4,11 @@ if ~exist('bidsDir','var'); bidsDir = []; end
 if ~exist('force','var'); force = []; end
 if isempty(force); force = 0; end
 
-if isfield(files,'fEstimCatAv') && ~isempty(char(files.fEstimCatAv))
-    fIn = char(files.fEstimCatAv);
-else
-    fIn = char(files.fEstimAv);
-end
+
+
+candidate = {'fEstimCatAv' 'fEstimAv' 'fEstim'};
+candidate = candidate(ismember(candidate,fields(files)));
+fIn = char(files.(candidate{1}));
 fOut = replace(fIn,'.nii.gz','-mask.nii.gz');
 % save in bids deriv dir for persistence since this is manually drawn
 if ~isempty(bidsDir)

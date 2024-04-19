@@ -14,9 +14,14 @@ if isempty(verbose); verbose = 0; end
 
 
 files.fOrig = fMri.fPlumb;
-[nRun,nEcho] = size(files.fOrig); nFrame = MRIread(files.fOrig{1,1}); nFrame = nFrame.nframes;
+sz = size(files.fOrig,[1 2 3]);
+nRun = sz(1); nEcho = sz(2); nVenc = sz(3);
+
+nFrame = MRIread(files.fOrig{1,1}); nFrame = nFrame.nframes;
 files.fCorrected = cell(size(fMri.fPlumb));
-files.fCorrectedAv = cell(size(fMri.fPlumb));
+if nFrame>1
+    files.fCorrectedAv = cell(size(fMri.fPlumb));
+end
 if ~isempty(fMot)
     if iscell(fMot)
         sz = [1 1]; for i = 1:length(fMot); sz = max(sz,size(fMot{i}.fMocoMat)); end
@@ -48,8 +53,11 @@ for I = 1:size(files.fOrig,1)
     disp([' run' num2str(I) '/' num2str(size(files.fOrig,1))])
 
     for E = 1:size(files.fOrig,2)
+        if nEcho
         disp(['  echo' num2str(E) '/' num2str(size(files.fOrig,2))])
 
+        for V = 1:size(files.fOrig,3)
+        
         %%% set filename
         fIn = files.fOrig{I,E};
         fOut = strsplit(fIn,filesep); fOut{end} = ['preproc_' fOut{end}]; fOut = strjoin(fOut,filesep);
@@ -403,7 +411,9 @@ if ~isempty(bsInd)
 
     %%%% generate qa file
     if sameGridFlag
-        %!! Too complicated to get a before file
+        %%%%% before
+        %too complicated
+        %%%%% after
         cmd = {srcAfni};
         cmd{end+1} = '3dTcat -overwrite \';
         fCatAfter = tempname; mkdir(fCatAfter); fCatAfter = fullfile(fCatAfter,'bsCatAfter.nii.gz');

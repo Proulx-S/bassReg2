@@ -1,9 +1,10 @@
 function xSet = initPreproc(xSet,dOut,geomRef,param,force)
 if ~exist('force','var');        force = []       ; end
 if ~isfield(xSet,'dataType'); dataType = {}       ; else; dataType = xSet.dataType; end
-if ~isfield(xSet,'dataType'); dataType = {}       ; else; dataType = xSet.dataType; end
+if ~isfield(param,'verbose');  verbose = []       ; else; verbose = param.verbose; end
 if isempty(force);               force = 0        ; end
 if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
+if isempty(verbose);           verbose = 0        ; end
 
 
 
@@ -30,7 +31,7 @@ xSet.files = xSet.files(b);
 dIn = xSet.files(1).folder;
 fOrig = fullfile(dIn,{xSet.files.name}');
 label = xSet.label;
-bidsList = replace({xSet.files.name}','.nii.gz',''); for i = 1:length(bidsList); bidsList{i} = strsplit(bidsList{i},'_'); end; bidsList = cat(1,bidsList{:})';
+bidsList = replace({xSet.files.name}','.nii.gz',''); for I = 1:length(bidsList); bidsList{I} = strsplit(bidsList{I},'_'); end; bidsList = cat(1,bidsList{:})';
 %%% dOut
 dOut = fullfile(dOut,label); if ~exist(dOut,'dir'); mkdir(dOut); end
 %%% geomRef
@@ -56,7 +57,7 @@ if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
 
 
 %% Rewrite data at plumb without dummies
-disp('Rewriting data at plumb (consider using 3drefit -deobllique "https://discuss.afni.nimh.nih.gov/t/3drefit-deoblique/3303/2")')
+disp('Rewriting data at plumb')
 
 %%% Get oblique and plumb files
 disp([' writing oblique and plumb references (for ' num2str(length(fOrig)) ' files)'])
@@ -69,8 +70,13 @@ if forceRewriteAtPlumb || ~exist(fPlumbRef,'file')
     cmd{end+1} = '3dcalc -overwrite \';
     cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
     cmd{end+1} = '-expr a \';
-    cmd{end+1} = ['-prefix ' fPlumbRef ' > /dev/null 2>&1'];
-    cmd{end+1} = ['3drefit -deoblique ' fPlumbRef ' > /dev/null 2>&1'];
+    if verbose
+        cmd{end+1} = ['-prefix ' fPlumbRef];
+        cmd{end+1} = ['3drefit -deoblique ' fPlumbRef];
+    else
+        cmd{end+1} = ['-prefix ' fPlumbRef ' > /dev/null 2>&1'];
+        cmd{end+1} = ['3drefit -deoblique ' fPlumbRef ' > /dev/null 2>&1'];
+    end
     % cmd{end+1} = '3dNwarpApply -overwrite \';
     % cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
     % cmd{end+1} = ['-prefix ' fPlumbRef ' \'];
@@ -81,21 +87,30 @@ if forceRewriteAtPlumb || ~exist(fObliqueRef,'file')
     cmd{end+1} = '3dcalc -overwrite \';
     cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
     cmd{end+1} = ['-expr a \'];
-    cmd{end+1} = ['-prefix ' fObliqueRef ' > /dev/null 2>&1'];
+    if verbose
+        cmd{end+1} = ['-prefix ' fObliqueRef ' > /dev/null 2>&1'];
+    else
+        cmd{end+1} = ['-prefix ' fObliqueRef];
+    end
 end
 %%%% individual files
-for i = 1:length(fOrig)
-    fIn = fOrig{i};
-    nFrame{i} = MRIread(fIn,1); nFrame{i} = nFrame{i}.nframes;
-    if nFrame{i}>8; nframes = 8; else; nframes = nFrame{i}; end
+for I = 1:length(fOrig)
+    fIn = fOrig{I};
+    nFrame{I} = MRIread(fIn,1); nFrame{I} = nFrame{I}.nframes;
+    if nFrame{I}>8; nframes = 8; else; nframes = nFrame{I}; end
     fOut = replace(fIn,dIn,dOut); fOut = replace(fOut,'.nii.gz',''); if ~exist(fOut,'dir'); mkdir(fOut); end;
     fOut = fullfile(fOut,'runPlumb_volRef.nii.gz');
     if forceRewriteAtPlumb || ~exist(fOut,'file')
         cmd{end+1} = '3dcalc -overwrite \';
         cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
         cmd{end+1} = ['-expr a \'];
-        cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
-        cmd{end+1} = ['3drefit -deoblique ' fOut ' > /dev/null 2>&1'];
+        if verbose
+            cmd{end+1} = ['-prefix ' fOut];
+            cmd{end+1} = ['3drefit -deoblique ' fOut];
+        else
+            cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
+            cmd{end+1} = ['3drefit -deoblique ' fOut ' > /dev/null 2>&1'];
+        end
         % cmd{end+1} = '3dNwarpApply -overwrite \';
         % cmd{end+1} = ['-nwarp ''IDENT(' fIn ')'' \'];
         % cmd{end+1} = ['-prefix ' fOut ' \'];
@@ -106,7 +121,11 @@ for i = 1:length(fOrig)
         cmd{end+1} = '3dcalc -overwrite \';
         cmd{end+1} = ['-a ' fIn '[0..' num2str(nframes-1) '] \'];
         cmd{end+1} = ['-expr a \'];
-        cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
+        if verbose
+            cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = ['-prefix ' fOut];
+        end
     end
 end
 
@@ -117,7 +136,7 @@ nFrame = nFrame(1);
 %%%% launch command
 if length(cmd)>1
     cmd = strjoin(cmd,newline); % disp(cmd)
-    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
 end
 
 
@@ -125,47 +144,64 @@ end
 %%% Rewrite at plumb (and means for later visualization) --- 3drefit -deoblique
 disp(' writing data (and means for later visualization)')
 fPlumb = cell(size(fOrig));
-fPlumbAv = cell(size(fOrig));
+if nFrame>1
+    fPlumbAv = cell(size(fOrig));
+end
 cmd = {srcAfni};
-for i = 1:numel(fOrig)
+for I = 1:numel(fOrig)
     % disp(['  file' num2str(i) '/' num2str(numel(fOrig))])
 
-    fIn = fOrig{i};
-    fOut = replace(replace(fOrig{i},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
-    if any(ismember(dataType,'volTs'))
+    fIn = fOrig{I};
+    fOut = replace(replace(fOrig{I},'.nii.gz',''),dIn,dOut); if ~exist(fOut,'dir'); mkdir(fOut); end
+    if nFrame>1
         fOut_plumb = fullfile(fOut,'setPlumb_volTs.nii.gz');
         fOut_av_plumb = fullfile(fOut,'av_setPlumb_volTs.nii.gz');
         fOut_av_oblique = fullfile(fOut,'av_runOblique_volTs.nii.gz'); clear fOut
     elseif any(ismember(dataType,'vol'))
-        fOut_plumb = fullfile(fOut,'setPlumb_vol.nii.gz');
-        fOut_av_plumb = fullfile(fOut,'av_setPlumb_vol.nii.gz');
-        fOut_av_oblique = fullfile(fOut,'av_runOblique_vol.nii.gz'); clear fOut
+        fOut_plumb = fullfile(fOut,'setPlumb_vol.nii.gz'); clear fOut
+        % fOut_av_plumb = fullfile(fOut,'av_setPlumb_vol.nii.gz');
+        % fOut_av_oblique = fullfile(fOut,'av_runOblique_vol.nii.gz'); clear fOut
     else
         dbstack; error(['don''t know which suffix to give' newline 'please set ''vol'' or ''volTs'' as dataType'])
     end
 
-    cmd{end+1} = ['echo ''  ''file ' num2str(i) '/' num2str(numel(fOrig))];
-    if forceRewriteAtPlumb || ...
-            any([~exist(fOut_plumb,'file') ~exist(fOut_av_plumb,'file') ~exist(fOut_av_oblique,'file')])
+    cmd{end+1} = ['echo ''  ''file ' num2str(I) '/' num2str(numel(fOrig))];
+    if forceRewriteAtPlumb || ~exist(fOut_plumb,'file')
         cmd{end+1} = ['cp ' fIn ' ' fOut_plumb];
-        cmd{end+1} = ['3drefit -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
-        
+        if verbose
+            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb];
+        else
+            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
+        end
+    end
+    fPlumb{I} = fOut_plumb;
+
+
+    if nFrame>1 && (forceRewriteAtPlumb || ~exist(fOut_av_plumb,'file'))
         cmd{end+1} = '3dTstat -overwrite \';
         cmd{end+1} = '-mean \';
         cmd{end+1} = ['-prefix ' fOut_av_plumb ' \'];
-        cmd{end+1} = [fOut_plumb ' > /dev/null 2>&1'];
-
+        if verbose
+            cmd{end+1} = [fOut_plumb ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = fOut_plumb;
+        end
+    end
+    if nFrame>1
+        fPlumbAv{I} = fOut_av_plumb;
+    end
+    
+    if nFrame>1 && (~exist(fOut_av_oblique,'file') || forceRewriteAtPlumb)
         cmd{end+1} = '3dTstat -overwrite \';
         cmd{end+1} = '-mean \';
         cmd{end+1} = ['-prefix ' fOut_av_oblique ' \'];
-        cmd{end+1} = [fIn ' > /dev/null 2>&1'];
-
-        cmd{end+1} = ['echo ''   ''done'];
-    else
-        cmd{end+1} = ['echo ''   ''already done,skipping'];
+        if verbose
+            cmd{end+1} = [fIn ' > /dev/null 2>&1'];
+        else
+            cmd{end+1} = fIn;
+        end
     end
-    fPlumb{i} = fOut_plumb;
-    fPlumbAv{i} = fOut_av_plumb;
+    cmd{end+1} = ['echo ''   ''done'];
 end
 
 if length(cmd)>1
@@ -274,14 +310,13 @@ end
 %% Multi-echo (cross-echo rms images for later motion/distortion estimation)
 
 %%% Detect multi-echo data if not specified in dataType
-tmp = bidsList(contains(bidsList(:,1,1),'echo-'),:,:);
-if ~isempty(tmp) && length(unique(tmp))>1
-    % if nnz(contains(fPlumb,'echo-'))==length(fPlumb)
-    dataType{end+1} = 'multiEcho';
-    nEcho = length(tmp);
-else
-    dataType{end+1} = 'singleEcho';
+nEcho = contains(bidsList(:,1),'echo-'); nEcho = unique(bidsList(nEcho,:));
+if isempty(nEcho)
     nEcho = 1;
+    dataType{end+1} = 'singleEcho';
+else
+    nEcho = length(nEcho);
+    dataType{end+1} = 'multiEcho';
 end
 disp([dataType{end} ' data detected'])
 % if ~any(ismember({'multiEcho' 'singleEcho'},dataType))
@@ -297,12 +332,34 @@ disp([dataType{end} ' data detected'])
 %     disp([dataType{ismember(dataType,{'multiEcho' 'singleEcho'})} ' data specified'])
 % end
 
-if ~any(ismember({'multiEcho'},dataType))
+nRun = contains(squeeze(bidsList(:,1,1)),'run-');
+if ~any(nRun); nRun = 1; else; nRun = length(unique(bidsList(nRun,:))); end
+
+if nRun==1 && all(ismember({'singleEcho' 'pc' 'vol'},dataType))
+    nVenc = length(fPlumb)/nEcho/nRun;
+
+    fPlumb = reshape(fPlumb,nRun,nEcho,nVenc);
+    if nFrame>1
+        fPlumbAv = reshape(fPlumbAv,nRun,nEcho,nVenc);   
+    end
+    fOrig = reshape(fOrig,nRun,nEcho,nVenc);
+    fEstim = fPlumb(contains(fPlumb,'proc-venc0_') & contains(fPlumb,'part-mag'));
+    if size(fEstim,1)~=size(fOrig,1); dbstack; error('double-check that'); end
+    % bidsList;
+    
+    
+
+elseif all(ismember({'singleEcho'},dataType))
     %%% Single echo data
     %%%% Write means (no rms) for later visualization
     cmd = {srcFs};
     fIn = fPlumbAv;
-    fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    if any(contains(squeeze(bidsList(:,1,1)),'run-'))
+        fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    else
+        fOut = fIn{1};
+        if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    end
     fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
     if forceRewriteAtPlumb || ~exist(fOut,'file')
         cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
@@ -329,7 +386,7 @@ if ~any(ismember({'multiEcho'},dataType))
     fEstimCatAv = fPlumbCatAv;
     fEstimAvCatAv = fPlumbAvCatAv;
 
-else
+elseif all(ismember({'multiEcho'},dataType))
     
     %%% Multi-echo data
     
@@ -339,7 +396,9 @@ else
     
     bidsList = permute(reshape(bidsList,size(bidsList,1),length(echoUniqueList),length(echoList)/length(echoUniqueList)),[1 3 2]);
     fPlumb = reshape(fPlumb,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
-    fPlumbAv = reshape(fPlumbAv,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
+    if nFrame>1
+        fPlumbAv = reshape(fPlumbAv,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
+    end
     fOrig = reshape(fOrig,length(echoUniqueList),length(echoList)/length(echoUniqueList))';
 
     disp('---------------------------------------------------')
@@ -356,23 +415,28 @@ else
 
     %%%% Write means (before rms) for later visualization
     cmd = {srcFs};
-    fPlumbCatAv = cell(1,size(fPlumbAv,2));
+    if nFrame>1
+        fPlumbCatAv = cell(1,size(fPlumbAv,2));
+    elseif nRun>1
+        fPlumbCat = cell(1,size(fPlumb,2));
+    end
+        
     fPlumbAvCatAv = cell(1,size(fPlumbAv,2));
-    if any(contains(squeeze(bidsList(:,1,1)),'run-'))
-        for e = 1:size(fPlumbAv,2)
-            fIn = fPlumbAv(:,e);
+    if nRun>1
+        for E = 1:nEcho
+            fIn = fPlumbAv(:,E);
             fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
             fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
             if forceRecomputeRMS || ~exist(fOut,'file')
                 cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
             end
-            fPlumbCatAv{e} = fOut;
+            fPlumbCatAv{E} = fOut;
             fIn = fOut;
             fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
             if forceRecomputeRMS || ~exist(fOut,'file')
                 cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
             end
-            fPlumbAvCatAv{e} = fOut;
+            fPlumbAvCatAv{E} = fOut;
         end
         disp(' averaging')
         if length(cmd)>1
@@ -388,16 +452,16 @@ else
     %%%% Compute and write rms
     disp('computing cross-echo rms')
     fEstim = cell(size(fPlumb,1),1);
-    for i = 1:size(fPlumb,1)
-        disp([' file' num2str(i) '/' num2str(size(fPlumb,1))])
-        fOut = replace(fPlumb{i,1},'echo-1','echo-rms');
+    for I = 1:size(fPlumb,1)
+        disp([' file' num2str(I) '/' num2str(size(fPlumb,1))])
+        fOut = replace(fPlumb{I,1},'echo-1','echo-rms');
         if forceRecomputeRMS || ~exist(fOut,'file')
             [a,~] = fileparts(fOut); if ~exist(a,'dir'); mkdir(a); end
 
-            mri = MRIread(fPlumb{i,1},1);
+            mri = MRIread(fPlumb{I,1},1);
             mri.vol = zeros([mri.volsize mri.nframes]);
             for ii = 1:size(fPlumb,2)
-                mriTmp = MRIread(fPlumb{i,ii});
+                mriTmp = MRIread(fPlumb{I,ii});
                 mri.vol = mri.vol + mriTmp.vol.^2;
             end
             mri.vol = sqrt(mri.vol./size(fPlumb,2));
@@ -407,23 +471,23 @@ else
         else
             disp('  already done, skipping')
         end
-        fEstim{i} = fOut;
+        fEstim{I} = fOut;
     end
 
 
     %%%% Write means (after rms) for later visualization
     cmd = {srcFs};
     fEstimAv = cell(size(fEstim));
-    for i = 1:length(fEstim)
-        fIn = fEstim{i};
+    for I = 1:length(fEstim)
+        fIn = fEstim{I};
         if nFrame>1
             fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
             if forceRecomputeRMS || ~exist(fOut,'file')
                 cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
             end
-            fEstimAv{i} = fOut;
+            fEstimAv{I} = fOut;
         else
-            fEstimAv{i} = fIn;
+            fEstimAv{I} = fIn;
         end
     end
     if any(contains(squeeze(bidsList(:,1,1)),'run-'))
@@ -462,7 +526,7 @@ fApply = fPlumb;
 
 %% QA: Visualize motion
 %%% between-run
-if ~isempty(fEstimCatAv)
+if nRun>1 && ~isempty(fEstimCatAv)
     cmd = {srcFs};
     cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
@@ -546,20 +610,24 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     %%%% Smoothing
     disp('temporally smooth timeseries')
     cmd = {srcAfni};
-    for i = 1:length(fEstim)
-        fIn = fEstim{i};
+    for I = 1:length(fEstim)
+        fIn = fEstim{I};
         [d,fOut,~] = fileparts(replace(fIn,'.nii.gz',''));
         fOut = fullfile(d,[strjoin({['sm' num2str(param.tSmWin_vol)] fOut},'_') '.nii.gz']);
-        cmd{end+1} = ['echo '' ''file' num2str(i) '/' num2str(length(fEstim))];
+        cmd{end+1} = ['echo '' ''file' num2str(I) '/' num2str(length(fEstim))];
         if forceResmoothing || ~exist(fOut,'file')
             cmd{end+1} = '3dTsmooth -overwrite \';
             cmd{end+1} = ['-prefix ' fOut ' \'];
             cmd{end+1} = ['-hamming ' num2str(param.tSmWin_vol) ' \'];
-            cmd{end+1} = fIn;
+            if verbose
+                cmd{end+1} = fIn;
+            else
+                cmd{end+1} = [fIn ' > /dev/null 2>&1'];
+            end
         else
             cmd{end+1} = ['echo ''  ''already smoothed, skipping'];
         end
-        fEstim{i} = fOut;
+        fEstim{I} = fOut;
     end
     cmd = strjoin(cmd,newline); % disp(cmd)
     [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
@@ -585,10 +653,10 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     ax{end}.DataAspectRatio = [1 1 1];
     ax{end}.XTick = []; ax{end}.YTick = [];
     ylabel(colorbar,'tSNR'); ax{end}.Colormap = gray;
-    for i = 1:3
-        cLim = [min([ax{i}.CLim(1) ax{i+3}.CLim(1)]) max([ax{i}.CLim(2) ax{i+3}.CLim(2)])];
-        ax{i}.CLim = cLim;
-        ax{i+3}.CLim = cLim;
+    for I = 1:3
+        cLim = [min([ax{I}.CLim(1) ax{I+3}.CLim(1)]) max([ax{I}.CLim(2) ax{I+3}.CLim(2)])];
+        ax{I}.CLim = cLim;
+        ax{I+3}.CLim = cLim;
     end
     [~,b,~] = fileparts(fileparts(fEstimAfterSm));
     title(hTile,b,'interpreter','none')
@@ -608,13 +676,13 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     %%%% Write means for later visualization
     cmd = {srcFs};
     fEstimAv = cell(size(fEstim));
-    for i = 1:length(fEstim)
-        fIn = fEstim{i};
+    for I = 1:length(fEstim)
+        fIn = fEstim{I};
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
         if forceResmoothing || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
         end
-        fEstimAv{i} = fOut;
+        fEstimAv{I} = fOut;
     end
     fIn = fEstimAv;
     fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
@@ -664,33 +732,49 @@ end
 
 
 %% Sumarize outputs
-[nRun,nEcho] = size(fOrig);
+if ~exist('nRun','var') || isempty(nRun)
+    nRun = size(fOrig,1); end
+if ~exist('nEcho','var') || isempty(nEcho)
+    nEcho = size(fOrig,2); end
+if any(ismember(dataType,'pc')) && (~exist('nVenc','var') || isempty(nVenc))
+    nVenc = size(fOrig,3); end
+
 xSet.dataType = dataType;
 xSet.nRun = nRun;
 xSet.nEcho = nEcho;
+if exist('nVenc','var')
+    xSet.nVenc = nVenc; end
 xSet.nFrame = nFrame;
 xSet.initFiles.nRun = nRun;
 xSet.initFiles.nEcho = nEcho;
+if exist('nVenc','var')
+    xSet.initFiles.nVenc = nVenc; end
 xSet.initFiles.nFrame = nFrame;
 xSet.initFiles.fOrig = fOrig;
 
 xSet.initFiles.fPlumbRef = fPlumbRef;
 xSet.initFiles.fPlumb = fPlumb;
-xSet.initFiles.fPlumbAv = fPlumbAv;
-xSet.initFiles.fPlumbCatAv = fPlumbCatAv;
-xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv;
+% if exist('nVenc','var')
+if nFrame>1
+    xSet.initFiles.fPlumbAv = fPlumbAv; end
+if nRun>1
+    xSet.initFiles.fPlumbCatAv = fPlumbCatAv;
+    xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv; end
 
 xSet.initFiles.fEstim = fEstim;
-xSet.initFiles.fEstimAv = fEstimAv;
-if iscell(fEstimCatAv)
-    xSet.initFiles.fEstimCatAv = fEstimCatAv;
-else
-    xSet.initFiles.fEstimCatAv = {fEstimCatAv};
-end
-if iscell(fEstimAvCatAv)
-    xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
-else
-    xSet.initFiles.fEstimAvCatAv = {fEstimAvCatAv};
+if nFrame>1
+    xSet.initFiles.fEstimAv = fEstimAv; end
+if nRun>1
+    if iscell(fEstimCatAv)
+        xSet.initFiles.fEstimCatAv = fEstimCatAv;
+    else
+        xSet.initFiles.fEstimCatAv = {fEstimCatAv};
+    end
+    if iscell(fEstimAvCatAv)
+        xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+    else
+        xSet.initFiles.fEstimAvCatAv = {fEstimAvCatAv};
+    end
 end
 
 xSet.initFiles.fApply = fApply;

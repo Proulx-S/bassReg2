@@ -127,7 +127,7 @@ if funcSet.nFrame>1 || funcSet.nRun>1
     motFiles = funcSet.wrMocoFiles;
     if isfield(funcSet,'brMocoFiles')
         % catenate successive transformations in the 3rd dimension
-        motFiles.fMocoMat = cat(3,motFiles.fMocoMat,funcSet.brMocoFiles.fMocoMat);
+        motFiles.fMocoMat = cat(10,motFiles.fMocoMat,funcSet.brMocoFiles.fMocoMat);
     end
 else
     motFiles = [];
