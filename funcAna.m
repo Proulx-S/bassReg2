@@ -276,16 +276,22 @@ if meFlag
     fSes_echoCat.fFit = {fSes.fFit};
     fSes_echoCat.fResid = {fSes.fResid};
 
-    fOut = strsplit(fSes(1).fStat,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = replace(strjoin(fOut,'_'),'_stats.nii.gz','_fullF.nii.gz'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    fOut = strsplit(fSes(1).fStat,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat';
+    fOut = replace(strjoin(fOut,'_'),'_stats.nii.gz','_fullF.nii.gz'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    
     cmd = {srcAfni};
-    cmd{end+1} = '3dTcat -overwrite \';
+    cmd{end+1} = '3dbucket -overwrite \';
     cmd{end+1} = ['-prefix ' fOut ' \'];
     cmd{end+1} = [strjoin({fSes.fStat},'[0] ') '[0]'];
+    % cmd = {srcAfni};
+    % cmd{end+1} = '3dTcat -overwrite \';
+    % cmd{end+1} = ['-prefix ' fOut ' \'];
+    % cmd{end+1} = [strjoin({fSes.fStat},'[0] ') '[0]'];
     cmd = strjoin(cmd,newline);
     [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
     fSes_echoCat.cmd = cmd;
-
     fSes_echoCat.fStat = fOut;
+    
     cadidateField = {'fAvCatAvEchoCat' 'fAvEchoCat' 'fAvCatAv' 'fAv'};
     cadidateField = cadidateField(ismember(cadidateField,fields(fFunc)));
     fSes_echoCat.fUnder = fFunc.(cadidateField{1});

@@ -6,6 +6,9 @@ if fPreproc.updatedFlag;  force = 1; end % override force=0 when preproc was upd
 %% Define all filenames
 fieldList1 = {'fCorrected' 'fCorrectedAv'};
 fieldList2 = {'f'          'fAv'};
+
+fieldList2 = fieldList2(ismember(fieldList1,fields(fPreproc)));
+fieldList1 = fieldList1(ismember(fieldList1,fields(fPreproc)));
 for i = 1:length(fieldList1)
     fFinal.(fieldList2{i}) = cell(size(fPreproc.fOrig));
     for I = 1:numel(fPreproc.fOrig)

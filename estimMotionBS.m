@@ -15,6 +15,35 @@ if isempty(force);         force        = 0       ; end
 explicitlyFixThroughPlane = 0;
 spSmFac = 0;
 
+
+%% Regenerate preprocFiles to undo any bsMoco that may have been applied already
+% Usefull when debugging.
+% NOTE that this is done for funcSetSource, not funcSetBase.
+
+
+robustFlag = 0; % robust detection (will sometime force unnecessary computaitons)
+for i = 1:length(funcSetSource.preprocFiles.fTrans)
+    robustFlag = robustFlag + isempty(dir(fullfile(fileparts(funcSetSource.preprocFiles.fTrans{i}),'mcBS_*.aff12.1D')));
+end
+
+if robustFlag || ...
+        ( isfield(funcSetSource,'preprocFiles') && isfield(funcSetSource.preprocFiles,'bsMocoFlag') && funcSetSource.preprocFiles.bsMocoFlag ) % less robust detection
+    warning(['between-set registration may have already been applied' newline 'regenerating preprocFiles for this new between-set registration'])
+    % dbstack; warning(['between-set registration already applied' newline 'must regenerate preprocFiles to do a new between-set registration'])
+    % keyboard
+    % % error(['between-set registration already applied' newline 'must regenerate preprocFiles to do a new between-set registration']);
+
+    motFiles = {};
+    candidateTrans = {'wrMocoFiles' 'brMocoFiles'};
+    candidateTrans = candidateTrans(ismember(candidateTrans,fields(funcSetSource)));
+    for i = 1:length(candidateTrans); motFiles{end+1} = funcSetSource.(candidateTrans{i}); end
+    imFiles = funcSetSource.initFiles;
+
+    funcSetSource.preprocFiles = applyMotion(imFiles,motFiles,[],1,verbose);
+    funcSetSource.preprocFiles.bsMocoFlag = 0;
+end
+
+
 %% Define files and param
 [fBase,fBaseMask,fBaseMaskInv] = autoSelect(funcSetBase,baseRunInd);
 [fSource,fSourceMask,~]        = autoSelect(funcSetSource,sourceRunInd);
@@ -180,10 +209,14 @@ else
     cmd{end+1} = [fBaseMaskInv ' &'];
 end
 
-
 files.qaFiles.fFslviewBS = strjoin(cmd,newline);
 if verbose
-    system(files.qaFiles.fFslviewBS);
+    if any(contains(cmd,'freeview'))
+        clipboard('copy',files.qaFiles.fFslviewBS)
+        disp('QA command copied to clipboard')
+    else
+        system(files.qaFiles.fFslviewBS);
+    end
 end
 
 

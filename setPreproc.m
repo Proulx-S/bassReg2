@@ -123,15 +123,17 @@ end
 force;
 param.maskFile = funcSet.initFiles.manBrainMaskInv;
 imFiles = funcSet.initFiles;
-if funcSet.nFrame>1 || funcSet.nRun>1
-    motFiles = funcSet.wrMocoFiles;
-    if isfield(funcSet,'brMocoFiles')
-        % catenate successive transformations in the 3rd dimension
-        motFiles.fMocoMat = cat(10,motFiles.fMocoMat,funcSet.brMocoFiles.fMocoMat);
-    end
-else
-    motFiles = [];
-end
+motFiles = catMot(funcSet,{'wrMocoFiles' 'brMocoFiles'});
+% if funcSet.nFrame>1 || funcSet.nRun>1
+    % motFiles = catMot(funcSet,{'wrMocoFiles' 'brMocoFiles'});
+    % motFiles = funcSet.wrMocoFiles;
+    % if isfield(funcSet,'brMocoFiles')
+    %     % catenate successive transformations in the 10th dimension
+    %     motFiles.fMocoMat = cat(10,motFiles.fMocoMat,funcSet.brMocoFiles.fMocoMat);
+    % end
+% else
+%     motFiles = [];
+% end
 funcSet.preprocFiles = applyMotion(imFiles,motFiles,param,force);
 % else
 %     disp('applying motion correction: nothing to apply (probably nFrame=nRun=1)')

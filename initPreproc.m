@@ -182,9 +182,9 @@ for R = 1:numel(fOrig)
         cmd{end+1} = '-mean \';
         cmd{end+1} = ['-prefix ' fOut_av_plumb ' \'];
         if verbose
-            cmd{end+1} = [fOut_plumb ' > /dev/null 2>&1'];
-        else
             cmd{end+1} = fOut_plumb;
+        else
+            cmd{end+1} = [fOut_plumb ' > /dev/null 2>&1'];
         end
     end
     if nFrame>1
@@ -196,9 +196,9 @@ for R = 1:numel(fOrig)
         cmd{end+1} = '-mean \';
         cmd{end+1} = ['-prefix ' fOut_av_oblique ' \'];
         if verbose
-            cmd{end+1} = [fIn ' > /dev/null 2>&1'];
-        else
             cmd{end+1} = fIn;
+        else
+            cmd{end+1} = [fIn ' > /dev/null 2>&1'];
         end
     end
     cmd{end+1} = ['echo ''   ''done'];
@@ -310,12 +310,21 @@ end
 %% Multi-echo (cross-echo rms images for later motion/distortion estimation)
 
 %%% Detect multi-echo data if not specified in dataType
-nEcho = contains(bidsList(:,1),'echo-'); nEcho = unique(bidsList(nEcho,:));
-if isempty(nEcho)
-    nEcho = 1;
+if isfield(xSet,'nEcho')
+    nEcho = xSet.nEcho;
+else
+    nEcho = contains(bidsList(:,1),'echo-'); nEcho = unique(bidsList(nEcho,:));
+    if isempty(nEcho)
+        nEcho = 1;
+        dataType{end+1} = 'singleEcho';
+    else
+        nEcho = length(nEcho);
+        dataType{end+1} = 'multiEcho';
+    end
+end
+if nEcho==1
     dataType{end+1} = 'singleEcho';
 else
-    nEcho = length(nEcho);
     dataType{end+1} = 'multiEcho';
 end
 disp([dataType{end} ' data detected'])
@@ -332,17 +341,33 @@ disp([dataType{end} ' data detected'])
 %     disp([dataType{ismember(dataType,{'multiEcho' 'singleEcho'})} ' data specified'])
 % end
 
-nRun = contains(squeeze(bidsList(:,1,1)),'run-');
-if ~any(nRun); nRun = 1; else; nRun = length(unique(bidsList(nRun,:))); end
+if isfield(xSet,'nRun')
+    nRun = xSet.nRun;
+else
+    nRun = contains(squeeze(bidsList(:,1,1)),'run-');
+    if ~any(nRun); nRun = 1; else; nRun = length(unique(bidsList(nRun,:))); end
+end
+if isfield(xSet,'nEcho')
+    nEcho = xSet.nEcho;
+else
+    nRun = contains(squeeze(bidsList(:,1,1)),'run-');
+    if ~any(nRun); nRun = 1; else; nRun = length(unique(bidsList(nRun,:))); end
+end
+
+% if isfield(xSet,'nVencDat')
+%     nVencDat = xSet.nVencDat;
+% else
+    nVencDat = length(fPlumb)/nEcho/nRun;
+% end
 
 if nRun==1 && all(ismember({'singleEcho' 'pc' 'vol'},dataType))
-    nVenc = length(fPlumb)/nEcho/nRun;
+    
 
-    fPlumb = reshape(fPlumb,nRun,nEcho,nVenc);
+    fPlumb = reshape(fPlumb,nRun,nEcho,nVencDat);
     if nFrame>1
-        fPlumbAv = reshape(fPlumbAv,nRun,nEcho,nVenc);   
+        fPlumbAv = reshape(fPlumbAv,nRun,nEcho,nVencDat);   
     end
-    fOrig = reshape(fOrig,nRun,nEcho,nVenc);
+    fOrig = reshape(fOrig,nRun,nEcho,nVencDat);
     fEstim = fPlumb(contains(fPlumb,'proc-venc0_') & contains(fPlumb,'part-mag'));
     if size(fEstim,1)~=size(fOrig,1); dbstack; error('double-check that'); end
     % bidsList;
@@ -742,25 +767,27 @@ if ~exist('nRun','var') || isempty(nRun)
     nRun = size(fOrig,1); end
 if ~exist('nEcho','var') || isempty(nEcho)
     nEcho = size(fOrig,2); end
-if any(ismember(dataType,'pc')) && (~exist('nVenc','var') || isempty(nVenc))
-    nVenc = size(fOrig,3); end
+% if any(ismember(dataType,'pc')) && (~exist('nVencDat','var') || isempty(nVencDat))
+%     nVencDat = size(fOrig,3); end
 
 xSet.dataType = dataType;
-xSet.nRun = nRun;
-xSet.nEcho = nEcho;
-if exist('nVenc','var')
-    xSet.nVenc = nVenc; end
-xSet.nFrame = nFrame;
-xSet.initFiles.nRun = nRun;
-xSet.initFiles.nEcho = nEcho;
-if exist('nVenc','var')
-    xSet.initFiles.nVenc = nVenc; end
-xSet.initFiles.nFrame = nFrame;
+if ~isfield(xSet,'nRun');  xSet.nRun = nRun; end
+if ~isfield(xSet,'nEcho'); xSet.nEcho = nEcho; end
+if ~isfield(xSet,'nVenc'); xSet.nRun = nVenc; end
+if ~isfield(xSet,'nVencDat'); xSet.nRun = nVencDat; end
+if ~isfield(xSet,'nFrame'); xSet.nFrame = nFrame; end
+xSet.initFiles.nRun   = xSet.nRun;
+xSet.initFiles.nEcho  = xSet.nEcho;
+xSet.initFiles.nVenc  = xSet.nVenc;
+xSet.initFiles.nVencDat  = xSet.nVencDat;
+xSet.initFiles.nFrame = xSet.nFrame;
+% if exist('nVencDat','var')
+%     xSet.initFiles.nVencDat = nVencDat; end
 xSet.initFiles.fOrig = fOrig;
 
 xSet.initFiles.fPlumbRef = fPlumbRef;
 xSet.initFiles.fPlumb = fPlumb;
-% if exist('nVenc','var')
+% if exist('nVencDat','var')
 if nFrame>1
     xSet.initFiles.fPlumbAv = fPlumbAv; end
 if nRun>1

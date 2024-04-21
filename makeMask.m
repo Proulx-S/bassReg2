@@ -3,6 +3,7 @@ global srcFs srcAfni
 if ~exist('bidsDir','var'); bidsDir = []; end
 if ~exist('force','var'); force = []; end
 if isempty(force); force = 0; end
+verbose = 0;
 
 
 
@@ -50,7 +51,11 @@ if force || ~exist(files.manBrainMaskInv,'file')
     cmd{end+1} = '3dcalc -overwrite \';
     cmd{end+1} = ['-prefix ' files.manBrainMaskInv ' \'];
     cmd{end+1} = ['-a ' files.manBrainMask ' \'];
-    cmd{end+1} = '-expr ''-(a-1)''';
+    if verbose
+        cmd{end+1} = '-expr ''-(a-1)''';
+    else
+        cmd{end+1} = '-expr ''-(a-1)'' 2> /dev/null';
+    end
     cmd = strjoin(cmd,newline); % disp(cmd)
     [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
 end

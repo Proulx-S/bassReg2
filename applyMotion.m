@@ -13,31 +13,42 @@ if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
 
 nRun = fMri.nRun; nEcho = fMri.nEcho;
-if isfield(fMri,'nVenc'); nVenc = fMri.nVenc; else nVenc = 1; end
+if isfield(fMri,'nVencDat'); nVencDat = fMri.nVencDat; else nVencDat = 1; end
 nFrame = fMri.nFrame;
 files.fOrig = fMri.fPlumb;
 files.fCorrected = cell(size(fMri.fPlumb));
 if nFrame>1
     files.fCorrectedAv = cell(size(fMri.fPlumb));
 end
+
+
+
 if ~isempty(fMot)
-    if iscell(fMot)
-        sz = [1 1]; for i = 1:length(fMot); sz = max(sz,size(fMot{i}.fMocoMat)); end
-        files.fTrans      = cell([sz length(fMot)]);
-        files.fTransLabel = cell([1 1 length(fMot)]);
-        for i = 1:length(fMot)
-            files.fTrans(:,:,i) = fMot{i}.fMocoMat;
-            [~,files.fTransLabel{1,1,i}] = fileparts(fMot{i}.fMocoMat{1});
-            files.fTransLabel{1,1,i} = strsplit(files.fTransLabel{1,1,i},'_'); files.fTransLabel{1,1,i} = files.fTransLabel{1,1,i}{1};
+    % if iscell(fMot)
+    %     sz = [1 1]; for i = 1:length(fMot); sz = max(sz,size(fMot{i}.fMocoMat)); end
+    %     files.fTrans      = cell([sz length(fMot)]);
+    %     files.fTransLabel = cell([1 1 length(fMot)]);
+    %     for i = 1:length(fMot)
+    %         files.fTrans(:,:,i) = fMot{i}.fMocoMat;
+    %         [~,files.fTransLabel{1,1,i}] = fileparts(fMot{i}.fMocoMat{1});
+    %         files.fTransLabel{1,1,i} = strsplit(files.fTransLabel{1,1,i},'_'); files.fTransLabel{1,1,i} = files.fTransLabel{1,1,i}{1};
+    %     end
+    % else
+        sz = [size(fMot{1}.fMocoMat,1) ones(1,8) length(fMot)];
+        files.fTrans      = cell(sz);
+        sz(1) = 1;
+        files.fTransLabel = cell(sz);
+        for C = 1:length(fMot)
+            files.fTrans(:,1,1,1,1,1,1,1,1,C)          = fMot{C}.fMocoMat;
+            [~,files.fTransLabel{1,1,1,1,1,1,1,1,1,C}] = fileparts(fMot{C}.fMocoMat{1}); files.fTransLabel{1,1,1,1,1,1,1,1,1,C} = strsplit(files.fTransLabel{1,1,1,1,1,1,1,1,1,C},'_'); files.fTransLabel{1,1,1,1,1,1,1,1,1,C} = files.fTransLabel{1,1,1,1,1,1,1,1,1,C}{1};
         end
-    else
-        files.fTrans      = fMot.fMocoMat;
-        files.fTransLabel = cell([ones(1,9) size(fMot.fMocoMat,10)]);
-        for i = 1:size(fMot.fMocoMat,10)
-            [~,files.fTransLabel{1,1,i}] = fileparts(fMot.fMocoMat{1,1,1,1,1,1,1,1,1,i});
-            files.fTransLabel{1,1,1,1,1,1,1,1,1,i} = strsplit(files.fTransLabel{1,1,1,1,1,1,1,1,1,i},'_'); files.fTransLabel{1,1,1,1,1,1,1,1,1,i} = files.fTransLabel{1,1,1,1,1,1,1,1,1,i}{1};
-        end
-    end
+        % files.fTrans      = fMot.fMocoMat;
+        % files.fTransLabel = cell([ones(1,9) size(fMot.fMocoMat,10)]);
+        % for i = 1:size(fMot.fMocoMat,10)
+        %     [~,files.fTransLabel{1,1,1,1,1,1,1,1,1,i}] = fileparts(fMot.fMocoMat{1,1,1,1,1,1,1,1,1,i});
+        %     files.fTransLabel{1,1,1,1,1,1,1,1,1,i} = strsplit(files.fTransLabel{1,1,1,1,1,1,1,1,1,i},'_'); files.fTransLabel{1,1,1,1,1,1,1,1,1,i} = files.fTransLabel{1,1,1,1,1,1,1,1,1,i}{1};
+        % end
+    % end
 else
     sz = size(fMri.fPlumb); sz(2) = 1;
     files.fTrans = repmat({'''IDENTITY'''},sz);
@@ -49,8 +60,8 @@ files.fTransCat = cell(size(fMri.fPlumb));
 disp('applying motion correction')
 for R = 1:nRun
     disp([' run' num2str(R) '/' num2str(nRun)])
-    for V = 1:nVenc
-        if nVenc>1; disp(['  venc' num2str(V) '/' num2str(nVenc)]); end
+    for V = 1:nVencDat
+        if nVencDat>1; disp(['  vencFile' num2str(V) '/' num2str(nVencDat)]); end
 
         for E = 1:size(files.fOrig,2)
             if nEcho>1; disp(['  echo' num2str(E) '/' num2str(nEcho)]); end
@@ -93,8 +104,8 @@ for R = 1:nRun
                 cmd{end+1} = ['-prefix ' fOutAv ' \'];
                 cmd{end+1} = '-mean \';
                 cmd{end+1} = fOut;
-            % else
-            %     fOutAv = fOut;
+                % else
+                %     fOutAv = fOut;
             end
 
             %%% output files
@@ -150,30 +161,13 @@ for R = 1:nRun
             end
 
         end
-    end
-
-    %%% Cross-echo processing
-    cmd = {srcAfni};
-    %%%% rms
-    if nEcho>1
-        fOut = files.fCorrected{R,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-        if force || ~exist(fOut,'file')
-            fIn = files.fCorrected(R,:);
-            tmp = ('a':'z'); tmp = tmp(1:length(fIn));
-            expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
-            cmd{end+1} = '3dcalc -overwrite \';
-            cmd{end+1} = ['-prefix ' fOut ' \'];
-            for i = 1:length(fIn)
-                cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
-            end
-            cmd{end+1} = ['-expr ''' expr ''''];
-        end
-        files.fCorrectedEchoRms{R,1} = fOut;
-
-        if param.tSmWin_vol
-            fOut = fCorrectedSm{R,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+        %%% Cross-echo processing
+        cmd = {srcAfni};
+        if nEcho>1
+            %%%% rms time-series
+            fOut = files.fCorrected{R,1,V}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
             if force || ~exist(fOut,'file')
-                fIn = fCorrectedSm(R,:);
+                fIn = files.fCorrected(R,:,V);
                 tmp = ('a':'z'); tmp = tmp(1:length(fIn));
                 expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
                 cmd{end+1} = '3dcalc -overwrite \';
@@ -183,59 +177,113 @@ for R = 1:nRun
                 end
                 cmd{end+1} = ['-expr ''' expr ''''];
             end
-            fCorrectedSmRms{R,1} = fOut;
-        end
+            files.fCorrectedEchoRms{R,1,V} = fOut;
 
-        %%% rms the average only when relevant
-        if nFrame>1
-            fOut = files.fCorrectedAv{R,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-            if force || ~exist(fOut,'file')
-                fIn = files.fCorrectedAv(R,:);
-                tmp = ('a':'z'); tmp = tmp(1:length(fIn));
-                expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
-                cmd{end+1} = '3dcalc -overwrite \';
-                cmd{end+1} = ['-prefix ' fOut ' \'];
-                for i = 1:length(fIn)
-                    cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
+            if param.tSmWin_vol
+                fOut = fCorrectedSm{R,1,V}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+                if force || ~exist(fOut,'file')
+                    fIn = fCorrectedSm(R,:,V);
+                    tmp = ('a':'z'); tmp = tmp(1:length(fIn));
+                    expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
+                    cmd{end+1} = '3dcalc -overwrite \';
+                    cmd{end+1} = ['-prefix ' fOut ' \'];
+                    for i = 1:length(fIn)
+                        cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
+                    end
+                    cmd{end+1} = ['-expr ''' expr ''''];
                 end
-                cmd{end+1} = ['-expr ''' expr ''''];
+                fCorrectedSmRms{R,1,V} = fOut;
             end
-            files.fCorrectedAvEchoRms{R,1} = fOut;
-        end
 
-        %%%%cat
-        if nRun>1
+            %%%% rms timeseries averages
             if nFrame>1
-                fOut = files.fCorrectedAv{R,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-                fIn  = files.fCorrectedAv(R,:);
-            else
-                fOut = files.fCorrected{R,1}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-                fIn  = files.fCorrected(R,:);
+                fOut = files.fCorrectedAv{R,1,V}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-rms'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+                if force || ~exist(fOut,'file')
+                    fIn = files.fCorrectedAv(R,:,V);
+                    tmp = ('a':'z'); tmp = tmp(1:length(fIn));
+                    expr = 'sqrt('; for i = 1:length(fIn); expr = [expr tmp(i) '*' tmp(i) '+']; end; expr(end) = ')';
+                    cmd{end+1} = '3dcalc -overwrite \';
+                    cmd{end+1} = ['-prefix ' fOut ' \'];
+                    for i = 1:length(fIn)
+                        cmd{end+1} = ['-' tmp(i) ' ' fIn{i} ' \'];
+                    end
+                    cmd{end+1} = ['-expr ''' expr ''''];
+                end
+                files.fCorrectedAvEchoRms{R,1,V} = fOut;
             end
+
+
+
+            %%%% cat timeseries
+            fOut = files.fCorrected{R,1,V}; fOut = strsplit(fOut,'_');
+            fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
             if force || ~exist(fOut,'file')
+                fIn = files.fCorrected(R,:,V);
                 cmd{end+1} = '3dTcat -overwrite \';
                 cmd{end+1} = ['-prefix ' fOut ' \'];
                 cmd{end+1} = strjoin(fIn,' ');
             end
+            files.fCorrectedEchoCat{R,1,V} = fOut;
+
+            if param.tSmWin_vol
+                fOut = fCorrectedSm{R,1,V}; fOut = strsplit(fOut,'_');
+                fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+                if force || ~exist(fOut,'file')
+                    fIn = fCorrectedSm(R,:,V);
+                    cmd{end+1} = '3dTcat -overwrite \';
+                    cmd{end+1} = ['-prefix ' fOut ' \'];
+                    cmd{end+1} = strjoin(fIn,' ');
+                end
+                fCorrectedSmEchoCat{R,1,V} = fOut;
+            end
+
+            %%%% cat timeseries average
             if nFrame>1
-                files.fCorrectedAvEchoCat{R,1} = fOut;
-            else
-                files.fCorrectedEchoCat{R,1} = fOut;
+                fOut = files.fCorrectedAv{R,1,V}; fOut = strsplit(fOut,'_');
+                fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+                if force || ~exist(fOut,'file')
+                    fIn = files.fCorrectedAv(R,:,V);
+                    cmd{end+1} = '3dTcat -overwrite \';
+                    cmd{end+1} = ['-prefix ' fOut ' \'];
+                    cmd{end+1} = strjoin(fIn,' ');
+                end
+                files.fCorrectedAvEchoCat{R,1,V} = fOut;
             end
-        end
-        
-        %%%% run command
-        disp('  cross-echo rms and cat')
-        if length(cmd)>1
-            cmd = strjoin(cmd,newline); % disp(cmd)
-            if verbose
-                [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+
+            % %%%%cat
+            % if nRun>1
+            %     if nFrame>1
+            %         fOut = files.fCorrectedAv{R,1,V}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+            %         fIn  = files.fCorrectedAv(R,:,V);
+            %     else
+            %         fOut = files.fCorrected{R,1,V}; fOut = strsplit(fOut,'_'); fOut{contains(fOut,'echo-')} = 'echo-cat'; fOut = strjoin(fOut,'_'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+            %         fIn  = files.fCorrected(R,:,V);
+            %     end
+            %     if force || ~exist(fOut,'file')
+            %         cmd{end+1} = '3dTcat -overwrite \';
+            %         cmd{end+1} = ['-prefix ' fOut ' \'];
+            %         cmd{end+1} = strjoin(fIn,' ');
+            %     end
+            %     if nFrame>1
+            %         files.fCorrectedAvEchoCat{R,1,V} = fOut;
+            %     else
+            %         files.fCorrectedEchoCat{R,1,V} = fOut;
+            %     end
+            % end
+
+            %%%% run command
+            disp('  cross-echo rms and cat')
+            if length(cmd)>1
+                cmd = strjoin(cmd,newline); % disp(cmd)
+                if verbose
+                    [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+                else
+                    [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+                end
+                disp('   done')
             else
-                [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+                disp('   already done, skipping')
             end
-            disp('   done')
-        else
-            disp('   already done, skipping')
         end
     end
 end
@@ -408,9 +456,9 @@ if ~isempty(bsInd)
     else
         fOut = {'fCorrectedAv' 'fCorrected'};
     end
-    fOut = fOut(ismember(fOut,fields(files))); fOut = char(files.(fOut{1}));
+    fOut = fOut(ismember(fOut,fields(files))); fOut = strjoin(files.(fOut{1}),' ');
     fMask = fMot{bsInd}.manBrainMaskInv;
-    
+
     mriBase =  MRIread(fBase,1); mriSource = MRIread(fSource,1);
     sameGridFlag = all([mriSource.volsize mriSource.xsize mriSource.ysize mriSource.zsize]==[mriBase.volsize mriBase.xsize mriBase.ysize mriBase.zsize]);
 
@@ -423,18 +471,21 @@ if ~isempty(bsInd)
 
     %%%% generate qa file
     if sameGridFlag
-        %%%%% before
-        %too complicated
-        %%%%% after
         cmd = {srcAfni};
+        %%%%% before
+        cmd{end+1} = '3dTcat -overwrite \';
+        fCatBefore = tempname; mkdir(fCatBefore); fCatBefore = fullfile(fCatBefore,'bsCatBefore.nii.gz');
+        cmd{end+1} = ['-prefix ' fCatBefore ' \'];
+        cmd{end+1} = [fSource ' ' fBase];
+        %%%%% after
         cmd{end+1} = '3dTcat -overwrite \';
         fCatAfter = tempname; mkdir(fCatAfter); fCatAfter = fullfile(fCatAfter,'bsCatAfter.nii.gz');
         cmd{end+1} = ['-prefix ' fCatAfter ' \'];
-        cmd{end+1} = [fSource ' ' fBase];
+        cmd{end+1} = [fOut ' ' fBase];
         %%%% generate qa command
         cmd{end+1} = srcFs;
         cmd{end+1} = 'fslview -m single \';
-        cmd{end+1} = [fCatAfter ' \'];
+        cmd{end+1} = [fCatBefore ' ' fCatAfter ' \'];
         cmd{end+1} = [param.maskFile ' &'];
     else
         cmd = {srcFs};

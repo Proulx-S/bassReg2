@@ -13,6 +13,10 @@ for S = 1:length(xSet)
 
         case 'final'
             fieldList = fields(xSet{S}.finalFiles);
+            
+            fieldList(contains(fieldList,'rainMask')) = [];
+            fieldList(contains(fieldList,'EchoCat')) = [];
+
             if any(contains(fieldList,'EchoRms'))
                 fieldList(~contains(fieldList,'EchoRms')) = [];
             end
@@ -20,11 +24,20 @@ for S = 1:length(xSet)
                 fieldList = fieldList(contains(fieldList,'fCatAv'));
             elseif any(contains(fieldList,'fAv'))
                 fieldList = fieldList(contains(fieldList,'fAv'));
+            elseif any(ismember(fieldList,'f')) || any(ismember(fieldList,'fEchoRms'))
+                ismember(fieldList,'f') | ismember(fieldList,'fEchoRms')
+                fieldList = fieldList(ismember(fieldList,'f') | ismember(fieldList,'fEchoRms'));
+                % fieldList = fieldList(contains(fieldList,'fAv'));
             end
 
-            if length(fieldList)>1; dbstack; error('can''t find what to show'); end
+            if length(fieldList)~=1; dbstack; error('can''t find what to show'); end
 
-            cmd{end+1} = [char(xSet{S}.finalFiles.(char(fieldList))) ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            if xSet{S}.nVenc
+                cmd{end+1} = [char(xSet{S}.finalFiles.(char(fieldList)){1}) ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            else
+                cmd{end+1} = [char(xSet{S}.finalFiles.(char(fieldList))) ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            end
+
 
 
         case 'preproc'
@@ -37,11 +50,17 @@ for S = 1:length(xSet)
                 fieldList = fieldList(contains(fieldList,'fCorrectedCatAv'));
             elseif any(contains(fieldList,'fCorrectedAv'))
                 fieldList = fieldList(contains(fieldList,'fCorrectedAv'));
+            elseif any(contains(fieldList,'fCorrected'))
+                fieldList = fieldList(contains(fieldList,'fCorrected'));
             end
 
             if length(fieldList)>1; dbstack; error('can''t find what to show'); end
 
-            cmd{end+1} = [char(xSet{S}.preprocFiles.(char(fieldList))) ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            if xSet{S}.nVenc
+                cmd{end+1} = [xSet{S}.preprocFiles.(char(fieldList)){1} ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            else
+                cmd{end+1} = [char(xSet{S}.preprocFiles.(char(fieldList))) ':resample=cubic:name=' replace(xSet{S}.label,'set-','') ' \'];
+            end
 
 
         otherwise

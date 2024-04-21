@@ -11,7 +11,7 @@ for S = 1:length(xSet)
     if xSet{S}.nEcho>2
         disp(['Fitting T2* to ' xSet{S}.label])
         % Pick the most averaged data
-        fieldList = {'fAvCatAv' 'fAv'};
+        fieldList = {'fAvCatAv' 'fAv' 'f'};
         fieldList = fieldList(ismember(fieldList,fields(xSet{S}.finalFiles)));
         fieldList = fieldList(1);
         for iii = 1:length(fieldList)
