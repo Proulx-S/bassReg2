@@ -28,7 +28,7 @@ end
 
 if robustFlag || ...
         ( isfield(funcSetSource,'preprocFiles') && isfield(funcSetSource.preprocFiles,'bsMocoFlag') && funcSetSource.preprocFiles.bsMocoFlag ) % less robust detection
-    warning(['between-set registration may have already been applied' newline 'regenerating preprocFiles for this new between-set registration'])
+    warning(['Between-set registration may have already been applied' newline '-->Regenerating preprocFiles for this new between-set registration'])
     % dbstack; warning(['between-set registration already applied' newline 'must regenerate preprocFiles to do a new between-set registration'])
     % keyboard
     % % error(['between-set registration already applied' newline 'must regenerate preprocFiles to do a new between-set registration']);

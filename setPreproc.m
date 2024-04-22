@@ -55,7 +55,7 @@ if funcSet.nFrame>1
     param.verbose = 0;
 else
     if ~any(ismember(funcSet.dataType,'vol'))
-        funcSet.dataType{end+1} = {'vol'};
+        funcSet.dataType{end+1} = 'vol';
     end
 end
 
