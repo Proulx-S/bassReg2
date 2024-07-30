@@ -6,7 +6,8 @@ if isempty(force);               force = 0        ; end
 if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
 if isempty(verbose);           verbose = 0        ; end
 
-
+if ~isfield(param,'duporigin'); duporigin = []    ; else; duporigin = param.duporigin; end
+if isempty(duporigin);          duporigin = 0     ; end
 
 forceRewriteAtPlumb = force;
 forceRecomputeRMS = force;
@@ -53,7 +54,7 @@ xSet.fGeom = fRef;
 % param
 if ~exist('param','var'); param = []; end
 if ~isfield(param,'nDummy') || isempty(param.nDummy); param.nDummy = 0; end
-if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 1; end
+if ~isfield(param,'verbose') || isempty(param.verbose); param.verbose = 0; end
 
 
 %% Rewrite data at plumb without dummies
@@ -169,9 +170,17 @@ for R = 1:numel(fOrig)
     if forceRewriteAtPlumb || ~exist(fOut_plumb,'file')
         cmd{end+1} = ['cp ' fIn ' ' fOut_plumb];
         if verbose
-            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb];
+            if duporigin
+                cmd{end+1} = ['3drefit -duporigin ' fPlumbRef ' -deoblique ' fOut_plumb];
+            else
+                cmd{end+1} = ['3drefit -deoblique ' fOut_plumb];
+            end
         else
-            cmd{end+1} = ['3drefit -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
+            if duporigin
+                cmd{end+1} = ['3drefit -duporigin ' fPlumbRef ' -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
+            else
+                cmd{end+1} = ['3drefit -deoblique ' fOut_plumb ' > /dev/null 2>&1'];
+            end
         end
     end
     fPlumb{R} = fOut_plumb;
@@ -363,12 +372,15 @@ end
 if nRun==1 && all(ismember({'singleEcho' 'pc' 'vol'},dataType))
     
 
-    fPlumb = reshape(fPlumb,nRun,nEcho,nVencDat);
-    if nFrame>1
-        fPlumbAv = reshape(fPlumbAv,nRun,nEcho,nVencDat);   
-    end
     fOrig = reshape(fOrig,nRun,nEcho,nVencDat);
-    fEstim = fPlumb(contains(fPlumb,'proc-venc0_') & contains(fPlumb,'part-mag'));
+    fPlumb = reshape(fPlumb,nRun,nEcho,nVencDat);
+    fEstim = fPlumb(:,:,contains(fPlumb(1,1,:),'proc-venc0_') & contains(fPlumb(1,1,:),'part-mag'));
+    if nFrame>1
+        fPlumbAv = reshape(fPlumbAv,nRun,nEcho,nVencDat);
+        fEstimAv = fPlumbAv(:,:,contains(fPlumbAv(1,1,:),'proc-venc0_') & contains(fPlumbAv(1,1,:),'part-mag'));
+        % fEstim = reshape(fPlumbAv,nRun,nEcho,nVencDat);   
+    end
+    % fEstim = fPlumb(contains(fPlumb,'proc-venc0_') & contains(fPlumb,'part-mag'));
     if size(fEstim,1)~=size(fOrig,1); dbstack; error('double-check that'); end
     % bidsList;
     
@@ -379,7 +391,11 @@ elseif all(ismember({'singleEcho'},dataType))
     %%%% Write means (no rms) for later visualization
     if nRun>1
         cmd = {srcFs};
-        fIn = fPlumbAv;
+        if nFrame>1
+            fIn = fPlumbAv;
+        else
+            fIn = fPlumb;
+        end
         if any(contains(squeeze(bidsList(:,1,1)),'run-'))
             fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
         else
@@ -390,13 +406,13 @@ elseif all(ismember({'singleEcho'},dataType))
         if forceRewriteAtPlumb || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
         end
-        fPlumbCatAv = fOut;
+        fPlumbCat = fOut;
         fIn = fOut;
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
         if forceRewriteAtPlumb || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
         end
-        fPlumbAvCatAv = fOut;
+        fPlumbAvCat = fOut;
 
         disp(' averaging')
         if length(cmd)>1
@@ -410,10 +426,12 @@ elseif all(ismember({'singleEcho'},dataType))
     
     %%% Set fEstim
     fEstim = fPlumb;
-    fEstimAv = fPlumbAv;
+    if nFrame>1
+        fEstimAv = fPlumbAv;
+    end
     if nRun>1
-        fEstimCatAv = fPlumbCatAv;
-        fEstimAvCatAv = fPlumbAvCatAv;
+        fEstimCat = fPlumbCat;
+        fEstimAvCat = fPlumbAvCat;
     end
 
 elseif all(ismember({'multiEcho'},dataType))
@@ -444,36 +462,43 @@ elseif all(ismember({'multiEcho'},dataType))
     disp('---------------------------------------------------')
 
     %%%% Write means (before rms) for later visualization
-    if nRun>1 || nFrame>1
+    if nRun>1
         cmd = {srcFs};
-        fPlumbCatAv = cell(1,size(fPlumbAv,2));
-        fPlumbAvCatAv = cell(1,size(fPlumbAv,2));
-        if nRun>1
-            for E = 1:nEcho
-                fIn = fPlumbAv(:,E);
-                fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-                fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
-                if forceRecomputeRMS || ~exist(fOut,'file')
-                    cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
-                end
-                fPlumbCatAv{E} = fOut;
-                fIn = fOut;
-                fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
-                if forceRecomputeRMS || ~exist(fOut,'file')
-                    cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
-                end
-                fPlumbAvCatAv{E} = fOut;
-            end
-            disp(' averaging')
-            if length(cmd)>1
-                cmd = strjoin(cmd,newline); % disp(cmd)
-                [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
-                disp('  done')
-            else
-                disp('  already done, skipping')
-            end
-            disp(' non need for averaging (single-run)')
+        if nFrame>1
+            fPlumbCat = cell(1,size(fPlumbAv,2));
+            fPlumbAvCat = cell(1,size(fPlumbAv,2));
+        else
+            fPlumbCat = cell(1,size(fPlumb,2));
+            fPlumbAvCat = cell(1,size(fPlumb,2));
         end
+        for E = 1:nEcho
+            if nFrame>1
+                fIn = fPlumbAv(:,E);
+            else
+                fIn = fPlumb(:,E);
+            end
+            fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+            fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
+            if forceRecomputeRMS || ~exist(fOut,'file')
+                cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
+            end
+            fPlumbCat{E} = fOut;
+            fIn = fOut;
+            fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
+            if forceRecomputeRMS || ~exist(fOut,'file')
+                cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
+            end
+            fPlumbAvCat{E} = fOut;
+        end
+        disp(' averaging')
+        if length(cmd)>1
+            cmd = strjoin(cmd,newline); % disp(cmd)
+            [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+            disp('  done')
+        else
+            disp('  already done, skipping')
+        end
+        disp(' non need for averaging (single-run)')
     end
 
     %%%% Compute and write rms
@@ -520,22 +545,26 @@ elseif all(ismember({'multiEcho'},dataType))
         end
     end
     if nRun>1
-        fIn = fEstimAv;
+        if nFrame>1
+            fIn = fEstimAv;
+        else
+            fIn = fEstim;
+        end
         fOut = replace(fIn{1},bidsList{contains(squeeze(bidsList(:,1,1)),'run-'),1,1},'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
         fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
         if forceRecomputeRMS || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
         end
-        fEstimCatAv = fOut;
+        fEstimCat = fOut;
         fIn = fOut;
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
         if forceRecomputeRMS || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
         end
-        fEstimAvCatAv = fOut;
+        fEstimAvCat = fOut;
     else
-        fEstimCatAv = '';
-        fEstimAvCatAv = '';
+        fEstimCat = '';
+        fEstimAvCat = '';
     end
     disp(' averaging')
     if length(cmd)>1
@@ -555,9 +584,9 @@ fApply = fPlumb;
 
 %% QA: Visualize motion
 %%% between-run
-if nRun>1 && ~isempty(fEstimCatAv)
+if nRun>1 && ~isempty(fEstimCat)
     cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+    cmd{end+1} = ['fslview -m single ' fEstimCat ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose
         [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
@@ -737,7 +766,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     %% QA: Visualize motion (with smoothing)
     %%% between-run
     cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' fEstimCatAv ' &'];
+    cmd{end+1} = ['fslview -m single ' fEstimCat ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose
         [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
@@ -791,22 +820,22 @@ xSet.initFiles.fPlumb = fPlumb;
 if nFrame>1
     xSet.initFiles.fPlumbAv = fPlumbAv; end
 if nRun>1
-    xSet.initFiles.fPlumbCatAv = fPlumbCatAv;
-    xSet.initFiles.fPlumbAvCatAv = fPlumbAvCatAv; end
+    xSet.initFiles.fPlumbCatAv = fPlumbCat;
+    xSet.initFiles.fPlumbAvCatAv = fPlumbAvCat; end
 
 xSet.initFiles.fEstim = fEstim;
 if nFrame>1
     xSet.initFiles.fEstimAv = fEstimAv; end
 if nRun>1
-    if iscell(fEstimCatAv)
-        xSet.initFiles.fEstimCatAv = fEstimCatAv;
+    if iscell(fEstimCat)
+        xSet.initFiles.fEstimCatAv = fEstimCat;
     else
-        xSet.initFiles.fEstimCatAv = {fEstimCatAv};
+        xSet.initFiles.fEstimCatAv = {fEstimCat};
     end
-    if iscell(fEstimAvCatAv)
-        xSet.initFiles.fEstimAvCatAv = fEstimAvCatAv;
+    if iscell(fEstimAvCat)
+        xSet.initFiles.fEstimAvCatAv = fEstimAvCat;
     else
-        xSet.initFiles.fEstimAvCatAv = {fEstimAvCatAv};
+        xSet.initFiles.fEstimAvCatAv = {fEstimAvCat};
     end
 end
 

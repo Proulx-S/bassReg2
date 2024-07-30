@@ -291,59 +291,110 @@ end
 %%% write means
 if nRun>1
     cmd = {srcFs};
-    fInList = files.fCorrectedAv;
+    if nFrame>1
+        fInList = files.fCorrectedAv;
+    else
+        fInList = files.fCorrected;
+    end
     for E = 1:size(fInList,2)
         fOut = replace(fInList{1,E},char(regexp(fInList{1,E},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
         fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
         if force || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fInList(:,E),' ')];
         end
-        files.fCorrectedCatAv{1,E} = fOut;
+        if nFrame>1
+            files.fCorrectedCatAv{1,E} = fOut;
+        else
+            files.fCorrectedCat{1,E} = fOut;
+        end
 
         fIn = fOut;
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
         if force || ~exist(fOut,'file')
             cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
         end
-        files.fCorrectedAvCatAv{1,E} = fOut;
+        if nFrame>1
+            files.fCorrectedAvCatAv{1,E} = fOut;
+        else
+            files.fCorrectedAvCat{1,E} = fOut;
+        end
     end
 
     %%%% multi-echo
-    fInList = files.fCorrectedAvEchoRms;
-    fOut = replace(fInList{1,1},char(regexp(fInList{1,1},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-    fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
-    if force || ~exist(fOut,'file')
-        cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fInList(:,1),' ')];
-    end
-    if iscell(fOut)
-        files.fCorrectedCatAvEchoRms = fOut;
-    else
-        files.fCorrectedCatAvEchoRms = {fOut};
-    end
+    if nEcho>1
+        if nFrame>1
+            fInList = files.fCorrectedAvEchoRms;
+        else
+            fInList = files.fCorrectedEchoRms;
+        end
+        fOut = replace(fInList{1,1},char(regexp(fInList{1,1},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+        fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
+        if force || ~exist(fOut,'file')
+            cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fInList(:,1),' ')];
+        end
+        if nFrame>1
+            files.fCorrectedCatAvEchoRms = fOut;
+        else
+            files.fCorrectedCatEchoRms = fOut;
+        end
 
-    fIn = fOut;
-    fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
-    if force || ~exist(fOut,'file')
-        cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
-    end
-    if iscell(fOut)
-        files.fCorrectedAvCatAvEchoRms = fOut;
-    else
-        files.fCorrectedAvCatAvEchoRms = {fOut};
-    end
+        if iscell(fOut)
+            if nFrame>1
+                files.fCorrectedCatAvEchoRms = fOut;
+            else
+                files.fCorrectedCatEchoRms = fOut;
+            end
+        else
+            if nFrame>1
+                files.fCorrectedCatAvEchoRms = {fOut};
+            else
+                files.fCorrectedCatEchoRms = {fOut};
+            end
+        end
+
+        fIn = fOut;
+        fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
+        if force || ~exist(fOut,'file')
+            cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
+        end
+        if iscell(fOut)
+            if nFrame>1
+                files.fCorrectedAvCatAvEchoRms = fOut;
+            else
+                files.fCorrectedAvCatEchoRms = fOut;
+            end
+        else
+            if nFrame>1
+                files.fCorrectedAvCatAvEchoRms = {fOut};
+            else
+                files.fCorrectedAvCatEchoRms = {fOut};
+            end
+        end
 
 
-    fInList = files.fCorrectedAvCatAv;
-    fOut = replace(fInList{1,1},char(regexp(fInList{1,1},'echo-\d+','match')),'echo-cat'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-    if force || ~exist(fOut,'file')
-        cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fInList,' ')];
+        if nFrame>1
+            fInList = files.fCorrectedAvCatAv;
+        else
+            fInList = files.fCorrectedAvCat;
+        end
+        fOut = replace(fInList{1,1},char(regexp(fInList{1,1},'echo-\d+','match')),'echo-cat'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+        if force || ~exist(fOut,'file')
+            cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fInList,' ')];
+        end
+        if iscell(fOut)
+            if nFrame>1
+                files.fCorrectedAvCatAvEchoCat = fOut;
+            else
+                files.fCorrectedAvCatEchoCat = fOut;
+            end
+        else
+            if nFrame>1
+                files.fCorrectedAvCatAvEchoCat = {fOut};
+            else
+                files.fCorrectedAvCatEchoCat = {fOut};
+            end
+        end
     end
-    if iscell(fOut)
-        files.fCorrectedAvCatAvEchoCat = fOut;
-    else
-        files.fCorrectedAvCatAvEchoCat = {fOut};
-    end
-
     %%% run command
     disp('cross-run catenating and averaging')
     if length(cmd)>1
@@ -389,7 +440,11 @@ end
 %%% between-run motion
 if nRun>1
     cmd = {srcFs};
-    cmd{end+1} = ['fslview -m single ' strjoin(files.fCorrectedCatAv,' ') ' &'];
+    if nFrame>1
+        cmd{end+1} = ['fslview -m single ' strjoin(files.fCorrectedCatAv,' ') ' &'];
+    else
+        cmd{end+1} = ['fslview -m single ' strjoin(files.fCorrectedCat,' ') ' &'];
+    end
     if ~isempty(maskFile)
         cmd{end} = replace(cmd{end},' &',' \');
         cmd{end+1} = [maskFile ' &'];

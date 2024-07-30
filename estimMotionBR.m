@@ -10,11 +10,11 @@ if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
 if ~exist('spSmFac','var'); spSmFac = 0; end
 if isempty(explicitlyFixThroughPlane); explicitlyFixThroughPlane = 0; end
-if isempty(afni3dAlineateArg); afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'}; end
+if isempty(afni3dAlineateArg); afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'}; end
 if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
 
-disp(['estimating between-run motion (moco to ' param.baseType ')'])
+disp('estimating between-run motion')
 files.fMoco = cell(size(fSource));
 files.fMocoAv = cell(size(fSource));
 files.fMocoParam = cell(size(fSource));
@@ -39,8 +39,6 @@ for I = 1:numel(fSource)
         cmd{end+1} = ['-prefix ' fOut ' \'];
         cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
         cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
-        % afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'};
-        afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'};
         cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
         if ~isempty(fMask)
             disp(['  using mask: ' fMask])
@@ -52,7 +50,8 @@ for I = 1:numel(fSource)
             cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
             disp('  explicitly enforcing no through-plane motion')
         end
-        cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \'; 
+        % cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \'; 
+        cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -cmass+xy \'; 
         % cmd{end+1} = '-maxrot 1 -maxshf 0.5 \'; 
         if spSmFac>0
             cmd{end+1} = ['-fineblur ' num2str(vsize*spSmFac) ' \'];
@@ -87,6 +86,8 @@ for I = 1:numel(fSource)
     files.fMocoMat{I} = [fOutParam '.aff12.1D'];
     files.fBase{I} = fBase;
 end
+
+% clipboard('copy',strjoin(files.fMoco(3)))
 
 %%% write means
 cmd = {srcFs};

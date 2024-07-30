@@ -24,8 +24,8 @@ end
 
 
 
-fieldList1 = {'fCorrectedEchoRms' 'fCorrectedAvEchoRms' 'fCorrectedAvEchoCat' 'fCorrectedEchoRms' 'fCorrectedAvEchoRms'};
-fieldList2 = {'fEchoRms'          'fAvEchoRms'          'fAvEchoCat'          'fEchoRms'          'fAvEchoRms'};
+fieldList1 = {'fCorrectedEchoRms' 'fCorrectedAvEchoRms' 'fCorrectedEchoCat' 'fCorrectedAvEchoCat' 'fCorrectedEchoRms' 'fCorrectedAvEchoRms'};
+fieldList2 = {'fEchoRms'          'fAvEchoRms'          'fEchoCat'          'fAvEchoCat'          'fEchoRms'          'fAvEchoRms'};
 clear fInListA2 fOutListA2
 for i = 1:length(fieldList1)
     if ~isfield(fPreproc,fieldList1{i}); continue; end
@@ -107,10 +107,20 @@ for I = 1:length(fInListA)
             mriTmp     = MRIread(fInListA{I}{i});
             mri        = obliqueRef;
             mri.vol    = mriTmp.vol;
+
             mri.xsize  = mriTmp.xsize;
             mri.ysize  = mriTmp.ysize;
             mri.zsize  = mriTmp.zsize;
             mri.volres = mriTmp.volres;
+            
+            mri.height  = mriTmp.height;
+            mri.width  = mriTmp.width;
+            mri.depth  = mriTmp.depth;
+            mri.volsize = mriTmp.volsize;
+            
+            mri.nframes = mriTmp.nframes;
+            mri.nvoxels = mriTmp.nvoxels;
+
             mri.tr     = mriTmp.tr;
             mri.te     = mriTmp.te;
             mri.ti     = mriTmp.ti;

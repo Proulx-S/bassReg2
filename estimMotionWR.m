@@ -13,6 +13,7 @@ if isempty(afni3dAlineateArg); afni3dAlineateArg = {'-cost ls' '-interp quintic'
 if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
 
+nRun = size(files.fEstim,1);
 
 disp(['estimating within-run motion (second-pass moco to ' files.param.baseType '; accounting for smoothing)'])
 fMask = files.manBrainMaskInv;
@@ -104,50 +105,52 @@ for I = 1:length(files.fEstim)
 end
 
 %%% write means
-cmd = {srcFs};
-fIn = files.fMocoAv;
-fOut = replace(fIn{1},char(regexp(fIn{1},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
-if force || ~exist(fOut,'file')
-    cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
-end
-files.fMocoCatAv = fOut;
-
-fIn = fOut;
-fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
-if force || ~exist(fOut,'file')
-    cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
-end
-files.fMocoAvCatAv = fOut;
-
-disp('averaging')
-if length(cmd)>1
-    cmd = strjoin(cmd,newline); % disp(cmd)
-    if verbose
-        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
-    else
-        [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+if nRun>1
+    cmd = {srcFs};
+    fIn = files.fMocoAv;
+    fOut = replace(fIn{1},char(regexp(fIn{1},'run-\d+','match')),'run-catAv'); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
+    fOut = strsplit(fOut,filesep); fOut{end} = replace(fOut{end},'av_',''); fOut = strjoin(fOut,filesep);
+    if force || ~exist(fOut,'file')
+        cmd{end+1} = ['mri_concat --o ' fOut ' ' strjoin(fIn,' ')];
     end
-    disp(' done')
-else
-    disp(' already done, skipping')
+    files.fMocoCatAv = fOut;
+
+    fIn = fOut;
+    fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
+    if force || ~exist(fOut,'file')
+        cmd{end+1} = ['mri_concat --mean --o ' fOut ' ' fIn];
+    end
+    files.fMocoAvCatAv = fOut;
+    disp('averaging')
+    if length(cmd)>1
+        cmd = strjoin(cmd,newline); % disp(cmd)
+        if verbose
+            [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+        else
+            [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
+        end
+        disp(' done')
+    else
+        disp(' already done, skipping')
+    end
 end
 
 %% Outputs
 %%% QA
 
-%%%% between-run motion
-cmd = {srcFs};
-cmd{end+1} = ['fslview -m single ' files.fMocoCatAv ' \'];
-if isfield(files,'manBrainMaskInv') && ~isempty(files.manBrainMaskInv)
-    cmd{end+1} = [files.manBrainMaskInv ' &'];
+if nRun>1
+    %%%% between-run motion
+    cmd = {srcFs};
+    cmd{end+1} = ['fslview -m single ' files.fMocoCatAv ' \'];
+    if isfield(files,'manBrainMaskInv') && ~isempty(files.manBrainMaskInv)
+        cmd{end+1} = [files.manBrainMaskInv ' &'];
+    end
+    cmd = strjoin(cmd,newline); % disp(cmd)
+    if verbose
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
+    end
+    files.qaFiles.fFslviewBR = cmd;
 end
-cmd = strjoin(cmd,newline); % disp(cmd)
-if verbose
-    [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
-end
-files.qaFiles.fFslviewBR = cmd;
-
 %%%% within-run motion
 %%%%% rewrite files with [frame] because not working with fslview grrrrr
 cmd = {srcAfni};

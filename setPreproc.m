@@ -59,6 +59,16 @@ else
     end
 end
 
+
+switch param.subInd
+    case 1
+        param.duporigin = 0;
+    case 2
+        param.duporigin = 1;
+    otherwise
+        dbstack; error('decide on that')
+end
+
 forceThis = force>1;%0;
 funcSet = initPreproc(funcSet,wDirFunc,[],param,forceThis);
 
@@ -111,15 +121,25 @@ end
 %%% Between-run motion correction
 if funcSet.nRun>1
     force;
-    source = funcSet.wrMocoFiles.fMocoAv;
-    base = funcSet.wrMocoFiles.fMocoAv{1}; %!!! should allow to input the index to use as the base !!!%
-    mask = funcSet.wrMocoFiles.manBrainMaskInv;
+    if funcSet.nFrame>1
+        source = funcSet.wrMocoFiles.fMocoAv;
+        if ~isfield(funcSet,'baseInd') || isempty(funcSet.baseInd); funcSet.baseInd = 1; end
+        base   = funcSet.wrMocoFiles.fMocoAv{funcSet.baseInd}; %!!! should allow to input the index to use as the base !!!%
+        mask   = funcSet.wrMocoFiles.manBrainMaskInv;
+    else
+        source = funcSet.initFiles.fEstim;
+        base   = funcSet.initFiles.fEstim{funcSet.baseInd}; %!!! should allow to input the index to use as the base !!!%
+        mask   = funcSet.initFiles.manBrainMaskInv;
+    end
     param.spSmFac = 0;
     funcSet.brMocoFiles = estimMotionBR(source,base,mask,param,force);
 end
+% [funcSet.wrMocoFiles.fMocoCatAv ' ' funcSet.brMocoFiles.fMocoCat]
+% clipboard('copy',funcSet.brMocoFiles.qaFiles.fFslviewBR)
+% clipboard('copy',strjoin(source))
+% clipboard('copy',strjoin(funcSet.brMocoFiles.fMocoParam))
 
-
-%%% Apply motion correction
+%%% Apply motion corrections
 force;
 param.maskFile = funcSet.initFiles.manBrainMaskInv;
 imFiles = funcSet.initFiles;
