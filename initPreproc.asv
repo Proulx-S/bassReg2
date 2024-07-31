@@ -164,7 +164,7 @@ end
 %% %%%%%%%%%%%%%%%
 % Summarize data %
 %%%%%%%%%%%%%%% %%
-forceThis   = 0;
+forceThis   = 1;
 verboseThis = 1;
 summarizeVolTs(runSet.fPlumbList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
 
