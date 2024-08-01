@@ -1,4 +1,5 @@
 function runSet = initPreproc(runSet,geomRef,param,force)
+global srcAfni
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end
 if ~isfield(runSet,'label');         runSet.label = []; end
@@ -26,10 +27,6 @@ if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
 
 % dataType: 'vol' 'volTs' 'singleEcho' 'multiEcho' 'pc'
 
-forceRewriteAtPlumb = force;
-forceRecomputeRMS = force;
-forceResmoothing = force;
-global srcFs srcAfni
 
 % geomRef refers to the file to be used as the reference for the slice
 % prescription in scanner space
@@ -164,7 +161,7 @@ end
 %% %%%%%%%%%%%%%%%
 % Summarize data %
 %%%%%%%%%%%%%%% %%
-forceThis   = 1;
+forceThis   = 0;
 verboseThis = 1;
 summarizeVolTs(runSet.fPlumbList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
 

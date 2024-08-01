@@ -2,8 +2,6 @@ function runSet = estimMotionWR(runSet,param,baseFileList,force,verbose)
 global srcAfni srcFs
 fMask = [];
 
-ppLabel = 'withinRunMoco';
-
 if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
 if exist('param','var') && ~isempty(param) && isfield(param,'afni3dAlineateArg'); afni3dAlineateArg = param.afni3dAlineateArg; else; afni3dAlineateArg = {}; end
 if exist('param','var') && ~isempty(param) && isfield(param,'spSmFac'); spSmFac = param.spSmFac; else; spSmFac = []; end
@@ -51,6 +49,9 @@ for r = 1:nRun
 
     %%% set filename
     fIn = runSet.fEstimList{r};
+    % if spSmFac>0
+    %     vsize = MRIread(fIn,1); vsize = mean([vsize.xsize vsize.ysize]);
+    % end
     fBase = runSet.fEstimListBase{r};
     fOut = strsplit(fIn,filesep); fOut{end} = ['mcWR_' fOut{end}]; fOut = strjoin(fOut,filesep);
     % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcWR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
@@ -131,11 +132,8 @@ end
 %% Summarize moco data
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+summarizeVolTs(runSet.fMocoList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
 
-
-runSet.param   = param;
-runSet.ppLabel = ppLabel;
 
 return
 

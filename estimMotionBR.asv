@@ -1,7 +1,5 @@
-function runSet = estimMotionBR(runSet,fBase,fMask,param,force,verbose)
+function files = estimMotionBR(runSet,fBase,fMask,param,force,verbose)
 global srcAfni srcFs
-
-ppLabel = 'betweenRunMoco';
 
 
 if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
@@ -112,7 +110,9 @@ for I = 1:numel(runSet.fEstimList)
     end
 
     %%% output files
-    runSet.fMocoList{I} = fOut;
+    runSet.fMoco{I} = fOut;
+    runSet.fMocoParam{I} = [fOutParam '.param.1D'];
+    runSet.fMocoMat{I} = [fOutParam '.aff12.1D'];
 end
 
 
@@ -120,13 +120,8 @@ end
 %% Summarize moco data
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+summarizeVolTs(runSet.fMocoList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
 
-
-runSet.param   = param;
-runSet.ppLabel = ppLabel;
-
-return
 
 %%% write means
 cmd = {srcFs};
@@ -147,10 +142,11 @@ files.fMocoAvCat = fOut;
 
 disp('averaging')
 if length(cmd)>1
+    cmd = strjoin(cmd,newline); % disp(cmd)
     if verbose
-        [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status; dbstack; error(cmdout); error('x'); end
+        [status,cmdout] = system(cmd,'-echo'); if status; dbstack; error(cmdout); error('x'); end
     else
-        [status,cmdout] = system(strjoin(cmd,newline)); if status; dbstack; error(cmdout); error('x'); end
+        [status,cmdout] = system(cmd); if status; dbstack; error(cmdout); error('x'); end
     end
     disp(' done')
 else
@@ -173,4 +169,3 @@ end
 files.qaFiles.fFslviewBR = cmd;
 
 files.param = param;
-

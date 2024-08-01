@@ -1,4 +1,5 @@
-function runSet = initPreproc(runSet,geomRef,param,force)
+function runSet = initPreproc(runSet,geomRef,param,force,verbose)
+global srcAfni
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end
 if ~isfield(runSet,'label');         runSet.label = []; end
@@ -26,10 +27,6 @@ if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
 
 % dataType: 'vol' 'volTs' 'singleEcho' 'multiEcho' 'pc'
 
-forceRewriteAtPlumb = force;
-forceRecomputeRMS = force;
-forceResmoothing = force;
-global srcFs srcAfni
 
 % geomRef refers to the file to be used as the reference for the slice
 % prescription in scanner space
@@ -44,8 +41,10 @@ global srcFs srcAfni
 %%%%%%%%%%%%%%% %%
 %%% funcSet
 %%%% sort by acquisition time
-[~,b] = sort(getAcqTime(runSet.fOrigList));
+runSet.acqTime = getAcqTime(runSet.fOrigList);
+[~,b] = sort(runSet.acqTime);
 runSet.fOrigList = runSet.fOrigList(b);
+runSet.acqTime   = runSet.acqTime(b);
 %%%% bids
 [~,bidsList,~] = fileparts(replace(runSet.fOrigList,'.nii.gz',''));
 for R = 1:length(bidsList); bidsList{R} = strsplit(bidsList{R},'_'); end; bidsList = cat(1,bidsList{:});
@@ -166,7 +165,7 @@ end
 %%%%%%%%%%%%%%% %%
 forceThis   = 0;
 verboseThis = 1;
-summarizeVolTs(runSet.fPlumbList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
+summarizeVolTs(runSet.fPlumbList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
 
 
 
