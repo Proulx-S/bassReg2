@@ -21,7 +21,7 @@ if isempty(duporigin);          duporigin = 0     ; end
 
 % wd
 runSet.wd = fullfile(runSet.wd,['sub-' runSet.sub],['ses-' runSet.ses]);
-runSet.wd = fullfile(runSet.wd,runSet.label);
+runSet.wd = fullfile(runSet.wd,['set-' runSet.label]);
 if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
 
 
@@ -47,6 +47,7 @@ runSet.fOrigList = runSet.fOrigList(b);
 runSet.acqTime   = runSet.acqTime(b);
 %%%% bids
 [~,bidsList,~] = fileparts(replace(runSet.fOrigList,'.nii.gz',''));
+bidsList = cellstr(bidsList);
 for R = 1:length(bidsList); bidsList{R} = strsplit(bidsList{R},'_'); end; bidsList = cat(1,bidsList{:});
 runSet.bidsList = bidsList;
 %%%% refractor
@@ -89,13 +90,18 @@ runSet.fGeom = fRef;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %%
 %%% Get oblique and plumb reference files
 disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' files)'])
-forceThis   = 0;
-verboseThis = 1;
+forceThis   = force;
+verboseThis = verbose;
 runSet = writeObliqueAndPlumbRef(runSet,forceThis,verboseThis);
 %%% Get plumb timeseries files
-disp([' rewriting data at plumb (for ' num2str(length(fOrigList)) ' files, removing ' num2str(runSet.nDummy) ' dummies)'])
-forceThis   = 0;
-verboseThis = 1;
+if all(diff(runSet.nDummy)==0)
+    disp([' rewriting data at plumb (for ' num2str(length(fOrigList)) ' files, removing ' num2str(runSet.nDummy(1)) ' dummies)'])
+else
+    disp([' rewriting data at plumb (for ' num2str(length(fOrigList)) ' files, removing ' num2str(runSet.nDummy') ' dummies)'])
+end
+
+forceThis   = force;
+verboseThis = verbose;
 runSet = writeObliqueAndPlumb(runSet,forceThis,verboseThis);
 
 
@@ -163,8 +169,8 @@ end
 %% %%%%%%%%%%%%%%%
 % Summarize data %
 %%%%%%%%%%%%%%% %%
-forceThis   = 0;
-verboseThis = 1;
+forceThis   = force;
+verboseThis = verbose;
 summarizeVolTs(runSet.fPlumbList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
 
 

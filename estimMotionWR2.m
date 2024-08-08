@@ -1,6 +1,7 @@
-function runSet = estimMotionWR(runSet,param,baseFileList,force,verbose)
+function runSet = estimMotionWR2(runSet,param,baseFileList,fMask,force,verbose)
 global srcAfni srcFs
-fMask = [];
+
+ppLabel = 'withinRunMoco';
 
 if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
 if exist('param','var') && ~isempty(param) && isfield(param,'afni3dAlineateArg'); afni3dAlineateArg = param.afni3dAlineateArg; else; afni3dAlineateArg = {}; end
@@ -9,6 +10,7 @@ if exist('param','var') && ~isempty(param) && isfield(param,'spSmFac'); spSmFac 
 if ~exist('baseFileList','var'); baseFileList = []; end
 
 
+if ~exist('fMask','var'); fMask = []; end
 if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
 if ~exist('spSmFac','var'); spSmFac = []; end
@@ -41,17 +43,15 @@ end
 
 
 %% Run moco on each run
-runSet.fMocoList = cell(size(runSet.fEstimList));
+runSet.fMocoList      = cell(size(runSet.fEstimList));
 runSet.fMocoParamList = cell(size(runSet.fEstimList));
-runSet.fMocoMatList = cell(size(runSet.fEstimList));
+runSet.fMocoMatList   = cell(size(runSet.fEstimList));
+runSet.fMaskList      = cell(size(runSet.fEstimList));
 for r = 1:nRun
     disp([' run' num2str(r) '/' num2str(nRun)])
 
     %%% set filename
     fIn = runSet.fEstimList{r};
-    % if spSmFac>0
-    %     vsize = MRIread(fIn,1); vsize = mean([vsize.xsize vsize.ysize]);
-    % end
     fBase = runSet.fEstimListBase{r};
     fOut = strsplit(fIn,filesep); fOut{end} = ['mcWR_' fOut{end}]; fOut = strjoin(fOut,filesep);
     % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcWR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
@@ -65,6 +65,7 @@ for r = 1:nRun
         cmd{end+1} = ['-base ' fBase ' \'];
         cmd{end+1} = ['-source ' fIn ' \'];
         cmd{end+1} = ['-prefix ' fOut ' \'];
+        cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
         cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
         cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
         % afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'};
@@ -103,7 +104,7 @@ for r = 1:nRun
 
         %%% execute command
         cmd = strjoin(cmd,newline); % disp(cmd)
-        if verbose
+        if verbose>1
             [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
         else
             [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
@@ -126,14 +127,19 @@ for r = 1:nRun
     % runSet.fMocoAvList{r} = fOutAv;
     runSet.fMocoParamList{r} = [fOutParam '.param.1D'];
     runSet.fMocoMatList{r} = [fOutParam '.aff12.1D'];
+
+    runSet.fMaskList{r} = fMask;
 end
 
 
 %% Summarize moco data
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,runSet.bidsList,runSet.nFrame,runSet.dataType,forceThis,verboseThis)
+summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
 
+
+runSet.param   = param;
+runSet.ppLabel = ppLabel;
 
 return
 

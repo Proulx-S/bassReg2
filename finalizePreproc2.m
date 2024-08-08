@@ -6,7 +6,8 @@ if isempty(force);            force = 0; end
 if isempty(verbose);        verbose = 0; end
 
 % if preprocFiles.updatedFlag;  force = 1; end % override force=0 when preproc was updated
-bidsDerivDir = fullfile(fileparts(fileparts(initFiles.fOrigList{1})),'derivatives');
+bidsDerivDir = initFiles.bidsDerivDir;
+% bidsDerivDir = fullfile(fileparts(fileparts(initFiles.fOrigList{1})),'derivatives');
 
 %% Combine transformation
 finalPreprocFiles           = rmfield(initFiles,'fEstimList');
@@ -14,10 +15,14 @@ finalPreprocFiles.fTransList    = cell(size(finalPreprocFiles.fOrigList,1),lengt
 finalPreprocFiles.fTransCatList = cell(size(finalPreprocFiles.fOrigList,1),1);
 finalPreprocFiles.ppLabelList   = cell(1,length(preprocFiles));
 for i = 1:length(preprocFiles)
+    if isempty(preprocFiles{i}); continue; end
     finalPreprocFiles.ppLabelList{1,i} = preprocFiles{i}.ppLabel;
     switch preprocFiles{i}.ppLabel
         case {'withinRunMoco' 'betweenRunMoco'}
             finalPreprocFiles.fTransList(:,i) = replace(preprocFiles{i}.fMocoList,'.nii.gz','.aff12.1D');
+        case 'betweenSesMoco'
+            if length(preprocFiles{i}.fMocoList)~=1; dbstack; error('figure that out'); end
+            finalPreprocFiles.fTransList(:,i) = repmat(replace(preprocFiles{i}.fMocoList,'.nii.gz','.aff12.1D'),size(finalPreprocFiles.fTransList(:,i)));
         otherwise
             dbstack; error('code that')
     end
@@ -29,9 +34,11 @@ for r = 1:size(finalPreprocFiles.fTransList,1)
     if ~exist(finalPreprocFiles.fTransCatList{r},'dir'); mkdir(finalPreprocFiles.fTransCatList{r}); end
     finalPreprocFiles.fTransCatList{r} = fullfile(finalPreprocFiles.fTransCatList{r},'transCat.aff12.1D');
 
-    cmd{end+1} = ['rm -f ' finalPreprocFiles.fTransCatList{r}];
-    cmd{end+1} = ['head -1 ' strjoin(finalPreprocFiles.fTransList(r,1),' ') ' > ' finalPreprocFiles.fTransCatList{r}];
-    cmd{end+1} = ['cat_matvec ' strjoin(flip(finalPreprocFiles.fTransList(r,:)),' ') ' >> ' finalPreprocFiles.fTransCatList{r}];
+    if force || ~exist(finalPreprocFiles.fTransCatList{r},'file')
+        cmd{end+1} = ['rm -f ' finalPreprocFiles.fTransCatList{r}];
+        cmd{end+1} = ['head -1 ' strjoin(finalPreprocFiles.fTransList(r,1),' ') ' > ' finalPreprocFiles.fTransCatList{r}];
+        cmd{end+1} = ['cat_matvec ' strjoin(flip(finalPreprocFiles.fTransList(r,:)),' ') ' >> ' finalPreprocFiles.fTransCatList{r}];
+    end
 end
 
 
@@ -60,7 +67,7 @@ end
 if verbose
     [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status; dbstack; error(cmdout); error('x'); end
 else
-    [status,cmdout] = system(strjoin(cmd,newline)); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+    [status,cmdout] = system(strjoin(cmd,newline)); if status || contains(cmdout,'error','IgnoreCase',true); dbstack; error(cmdout); error('x'); end
 end
 
 

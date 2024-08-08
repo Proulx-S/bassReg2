@@ -1,7 +1,7 @@
-function runSet = estimMotionBR(runSet,fBase,fMask,param,force,verbose)
+function runSet = estimMotionBS2(runSet,fBase,fMask,param,force,verbose)
 global srcAfni srcFs
 
-ppLabel = 'betweenRunMoco';
+ppLabel = 'betweenSesMoco';
 
 
 if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
@@ -23,6 +23,7 @@ if isempty(verbose); verbose = 0; end
 
 %% Get source and base files
 if isempty(fBase)
+    dbstack; error('code that');
     switch param.baseType
         case 'firstRun_avFrame'
             [a,b,c] = fileparts(runSet.fMocoList);
@@ -42,21 +43,55 @@ if isempty(fBase)
         %     runSet = estimMotionWR(runSet,paramBase,[],[],[]);
     end
 else
-    dbstack; error('code that');
+    switch param.sourceType
+        case 'avRun_avFrame'
+            % Define source
+            fSourceList = cellstr(fullfile(runSet.wd,'av_cat_mcBR_av_mcWR_setPlumb_volTs.nii.gz'));
+            runSet = wr2br(runSet);
+            runSet.fEstimList = fSourceList;
+
+            % Define base in source session set
+            mriBase = MRIread(fBase);
+            mriBaseSetPlumb = MRIread(runSet.fPlumbList{1},1);
+            mriBaseSetPlumb.vol = mriBase.vol;
+
+            fBaseSetPlumb = strsplit(char(fSourceList),filesep);
+            fBaseSetPlumb{end} = ['mcBSbase_' fBaseSetPlumb{end}];
+            fBaseSetPlumb = strjoin(fBaseSetPlumb,filesep);
+
+            MRIwrite(mriBaseSetPlumb,fBaseSetPlumb);
+            
+            runSet.fBase         = fBase;
+            runSet.fBaseSetPlumb = fBaseSetPlumb;
+
+        otherwise
+            dbstack; error('X');
+    end
 end
 
 
 
-%% Run moco on each run
-disp('estimating between-run motion')
+%% Run moco from source to base session
+disp('estimating between-session motion')
 runSet.fMocoList = cell(size(runSet.fEstimList));
-runSet.manBrainMaskInv = fMask;
+% runSet.manBrainMaskInv = fMask;
+
 for I = 1:numel(runSet.fEstimList)
-    disp([' run' num2str(I) '/' num2str(length(runSet.fEstimList))])
+    switch param.sourceType
+        case 'avRun_avFrame'
+            disp([' source            : ' runSet.fEstimList{I} ])
+            disp([' base              : ' char(runSet.fBase) ])
+            disp([' base in source set: ' char(runSet.fBaseSetPlumb) ])
+            disp([' mask              : ' char(fMask) ])
+        otherwise
+            dbstack; error('X');
+            disp([' run' num2str(I) '/' num2str(length(runSet.fEstimList))])
+    end
     %%% set filename
     fIn = runSet.fEstimList{I};
     % vsize = MRIread(fIn,1); vsize = mean([vsize.xsize vsize.ysize]);
-    fOut = strsplit(fIn,filesep); fOut{end} = ['mcBR_' fOut{end}]; fOut = strjoin(fOut,filesep);
+    fOut = strsplit(fIn,filesep); fOut{end} = ['mcBS_' fOut{end}]; fOut = strjoin(fOut,filesep);
+    disp([' out               : ' char(fOut) ])
     % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcBR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
     fOutParam = replace(fOut,'.nii.gz','');
     % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
@@ -64,15 +99,15 @@ for I = 1:numel(runSet.fEstimList)
         cmd = {srcAfni};
         %%% moco
         cmd{end+1} = '3dAllineate -overwrite \';
-        cmd{end+1} = ['-base ' runSet.fBase ' \'];
+        cmd{end+1} = ['-base ' runSet.fBaseSetPlumb ' \'];
         cmd{end+1} = ['-source ' fIn ' \'];
         cmd{end+1} = ['-prefix ' fOut ' \'];
-        % cmd{end+1} = ['-wtprefix ' fOut ' \'];
+        cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeights.nii.gz') ' \'];
         cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
         cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
         cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
         if ~isempty(fMask)
-            disp(['  using mask: ' fMask])
+            % disp(['  using mask: ' fMask])
             cmd{end+1} = ['-emask ' fMask ' \'];
         else
             disp('  not using mask')
@@ -81,24 +116,24 @@ for I = 1:numel(runSet.fEstimList)
             cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
             disp('  explicitly enforcing no through-plane motion')
         end
-        % cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \'; 
-        cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -cmass+xz \'; 
-        % cmd{end+1} = '-maxrot 1 -maxshf 0.5 \'; 
+        % cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \';
+        cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -cmass+xz \';
+        % cmd{end+1} = '-maxrot 1 -maxshf 0.5 \';
         if spSmFac>0
             fineBlur = mean(runSet.vSize(I,1:2))*spSmFac;
             cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
         end
         % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
         cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
-        if verbose; disp(strjoin(cmd,newline)); end
+        if verbose>1; disp(strjoin(cmd,newline)); end
 
         % %%% detect smoothing
         % sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
         % n = MRIread(fIn,1); n = n.nframes - 1;
         % nLim = [0 n] + [1 -1].*((sm+1)/2-1);
-        
+
         %%% execute command
-        if verbose
+        if verbose>1
             [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
         else
             [status,cmdout] = system(strjoin(cmd,newline)); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
@@ -118,10 +153,10 @@ end
 
 
 
-%% Summarize moco data
-forceThis   = force;
-verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+% %% Summarize moco data
+% forceThis   = force;
+% verboseThis = verbose;
+% summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
 
 
 runSet.param   = param;
