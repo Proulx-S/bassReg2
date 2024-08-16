@@ -27,6 +27,9 @@ for i = 1:length(preprocFiles)
             dbstack; error('code that')
     end
 end
+[finalPreprocFiles.fTransList{:,all(cellfun('isempty',finalPreprocFiles.fTransList),1)}] = deal('');
+[finalPreprocFiles.ppLabelList{:,all(cellfun('isempty',finalPreprocFiles.ppLabelList),1)}] = deal('');
+
 cmd = {srcAfni};
 for r = 1:size(finalPreprocFiles.fTransList,1)
     [~,b,~] = fileparts(fileparts(finalPreprocFiles.fTransList{r,1}));
@@ -72,8 +75,23 @@ end
 
 
 %% Rewrite at setOblique
-disp(' rewrting preproc data at setOblique')
-mriOblique = MRIread(initFiles.fGeom);
+for pp = 1:length(preprocFiles)
+    if ~isempty(preprocFiles{pp}) && strcmp(preprocFiles{pp}.ppLabel,'betweenSesMoco') && isfield(preprocFiles{pp},'fGeomSes1')
+        fGeomSes1 = preprocFiles{pp}.fGeomSes1;
+    end
+end
+if ~exist('fGeomSes1','var')
+    fGeomSes1 = [];
+end
+
+
+if isempty(fGeomSes1)
+    disp(' rewriting preproc data at setOblique')
+    mriOblique = MRIread(initFiles.fGeom);
+else
+    disp(' rewriting preproc data at setOblique of ses-1')
+    mriOblique = MRIread(fGeomSes1);
+end
 for r = 1:size(finalPreprocFiles.fPreprocList,1)
     disp(['file ' num2str(r) '/' num2str(size(finalPreprocFiles.fPreprocList,1))])
     if fPreprocUpdated(r)
@@ -93,6 +111,10 @@ verboseThis = verbose;
 summarizeVolTs(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis)
 % fOrigList = replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz')
 summarizeVolTs(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis)
+
+
+
+
 
 
 
