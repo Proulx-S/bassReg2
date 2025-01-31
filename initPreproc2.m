@@ -1,4 +1,4 @@
-function [runSet,fSort] = initPreproc(runSet,geomRef,param,force,verbose)
+function runSet = initPreproc2(runSet,geomRef,param,skipMask,force,verbose)
 global srcAfni
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end
@@ -8,10 +8,12 @@ if isempty(runSet.fOrigList); runSet.fOrigList = runSet.fList; end
 if isempty(runSet.label);         runSet.label = 'pp'; end
 if isempty(runSet.nDummy);       runSet.nDummy = 0; end
 
-if ~exist('force','var');        force = []       ; end
-if ~isfield(runSet,'dataType'); dataType = {}       ; else; dataType = runSet.dataType; end
+if ~exist('force'   ,'var');        force    = []       ; end
+if ~exist('skipMask','var');        skipMask = []       ; end
+if ~isfield(runSet,'dataType'); dataType = {}     ; else; dataType = runSet.dataType; end
 if ~isfield(param,'verbose');  verbose = []       ; else; verbose = param.verbose; end
 if isempty(force);               force = 0        ; end
+if isempty(skipMask);         skipMask = 0        ; end
 if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
 if isempty(verbose);           verbose = 1        ; end
 
@@ -20,8 +22,9 @@ if isempty(duporigin);          duporigin = 0     ; end
 
 
 % wd
-runSet.wd = fullfile(runSet.wd,['sub-' runSet.sub],['ses-' runSet.ses]);
-runSet.wd = fullfile(runSet.wd,['set-' runSet.label]);
+runSet.wd   = fullfile(runSet.info.prcDir,['sub-' runSet.sub],['ses-' runSet.ses],['set-' runSet.label]);
+% runSet.wd = fullfile(runSet.wd,['sub-' runSet.sub],['ses-' runSet.ses]);
+% runSet.wd = fullfile(runSet.wd,['set-' runSet.label]);
 if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
 
 
@@ -35,22 +38,38 @@ if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
 % freeview. This matters moslty when areg was used.
 
 
+runSet.acqTime = runSet.date + getAcqTime(runSet.fOrigList(:,1));
+
+[runSet.initFiles,fSort] = doIt(runSet,dataType,geomRef,param,skipMask,force,verbose);
+runSet.fList     = runSet.fList(fSort,:);
+runSet.date      = runSet.date(fSort);
+runSet.nDummy    = runSet.nDummy(fSort);
+runSet.fOrigList = runSet.fOrigList(fSort,:);
+runSet.fMasks    = runSet.initFiles.fMasks;
+% runSet = rmfield(runSet,'date');
+
+
+
+function [runSet,fSort] = doIt(runSet,dataType,geomRef,param,skipMask,force,verbose)
+global srcAfni
 
 %% %%%%%%%%%%%%%%%
 % Massage inputs %
 %%%%%%%%%%%%%%% %%
 %%% funcSet
 %%%% sort by acquisition time
-runSet.acqTime = getAcqTime(runSet.fOrigList) + caldays(day(runSet.date)-1) + calmonths(month(runSet.date)-1) + calyears(year(runSet.date)-1);
-runSet = rmfield(runSet,'date');
+% runSet.acqTime = runSet.date + getAcqTime(runSet.fOrigList);
+% runSet.acqTime = getAcqTime(runSet.fOrigList) + caldays(day(runSet.date)-1) + calmonths(month(runSet.date)-1) + calyears(year(runSet.date)-1);
+% runSet = rmfield(runSet,'date');
 [~,fSort] = sort(runSet.acqTime);
-runSet.fOrigList = runSet.fOrigList(fSort);
-runSet.fList     = runSet.fList(fSort);
+runSet.fOrigList = runSet.fOrigList(fSort,:);
+runSet.fList     = runSet.fList(fSort,:);
 runSet.acqTime   = runSet.acqTime(fSort);
+runSet.nDummy    = runSet.nDummy(fSort);
 %%%% bids
-[~,bidsList,~] = fileparts(replace(runSet.fOrigList,'.nii.gz',''));
+[~,bidsList,~] = fileparts(replace(runSet.fOrigList(:),'.nii.gz',''));
 bidsList = cellstr(bidsList);
-for R = 1:length(bidsList); bidsList{R} = strsplit(bidsList{R},'_'); end; bidsList = cat(1,bidsList{:});
+for R = 1:length(bidsList); bidsList{R} = strsplit(bidsList{R},'_'); end; bidsList = padcatcell(bidsList{:}); bidsList(cellfun('isempty',bidsList)) = {''};
 runSet.bidsList = bidsList;
 %%%% refractor
 fOrigList = runSet.fOrigList;
@@ -133,12 +152,13 @@ nRun = size(runSet.fPlumbList,1);
 if isfield(runSet,'nEcho')
     nEcho = runSet.nEcho;
 else
-    nEcho = contains(bidsList(1,:),'echo-'); nEcho = unique(bidsList(nEcho,:));
+    nEcho = contains(bidsList,'echo-'); nEcho = unique(bidsList(nEcho,:));
     if isempty(nEcho)
         nEcho = 1;
     %     dataType{end+1} = 'singleEcho';
     else
         nEcho = length(nEcho);
+        dbstack; error('double-check that')
         % dataType{end+1} = 'multiEcho';
     end
 end
@@ -173,12 +193,57 @@ end
 %%%%%%%%%%%%%%% %%
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fPlumbList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+runSet.fPlumbSmr = summarizeVolTs2(runSet.fPlumbList,[],[],param.nDummy,[],forceThis,verboseThis);
 
 
 
+%% %%%%%%%%%%%%%%%%%%
+% Draw preproc mask %
+%%%%%%%%%%%%%%%%%% %%
+
+if ~skipMask
+    forceThis = force;
+    useSynth  = [];
+    % if strcmp(runSet.label,'bold')
+    %     useSynth = 1;
+    % end
+
+    [~,bidsSubFolder] = fileparts(fileparts(runSet.fOrigList{1}));
+    fMaskInv = fullfile(runSet.info.bidsDir,'derivatives','manual',['sub-' runSet.info.sub],['ses-' runSet.info.ses],bidsSubFolder,['set-' runSet.label]);
+    fMaskInv = fullfile(fMaskInv,['sub-' runSet.info.sub '_ses-' runSet.info.ses '_set-' runSet.label '_desc-forWRmoco_mask.nii.gz']);
+
+    if exist(fMaskInv,'file') && ~forceThis
+        %%% Get brain mask for preprocessing from bids derivatives if it exists
+        runSet.fMasks.fUlay    = char(runSet.fPlumbSmr.sesCat.runAv.fList);
+        runSet.fMasks.fMaskInv = replace(runSet.fMasks.fUlay,'_volTs.nii.gz','_volBrainMaskInv.nii.gz');
+        copyfile(fMaskInv,runSet.fMasks.fMaskInv)
+        runSet.fMasks.fMask    = replace(runSet.fMasks.fUlay,'_volTs.nii.gz','_volBrainMask.nii.gz'   );
+        cmd = {srcAfni};
+        cmd{end+1} = '3dcalc -overwrite \';
+        cmd{end+1} = ['-prefix ' runSet.fMasks.fMask ' \'];
+        cmd{end+1} = ['-a ' runSet.fMasks.fMaskInv ' \'];
+        cmd{end+1} = '-expr ''-(a-1)''';
+        [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status; dbstack; error(cmdout); error('x'); end        
+
+    else
+        %%% Draw brain mask for preprocessing if it does not exist in bids derivatives
+        runSet.fMasks = drawMask(char(runSet.fPlumbSmr.sesCat.runAv.fList),useSynth,forceThis);
+        if ~exist(fileparts(fMaskInv),'dir'); mkdir(fileparts(fMaskInv)); end
+        copyfile(runSet.fMasks.fMaskInv,fMaskInv)
+    end
+
+
+
+
+else
+    runSet.fMasks = [];
+end
+
+
+
+
+    
 return
-
 
 
 

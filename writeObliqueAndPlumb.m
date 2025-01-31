@@ -9,22 +9,26 @@ duporigin = 1;
 cmd = {srcAfni};
 
 if size(runSet.nDummy,1)==1
-    runSet.nDummy = repmat(runSet.nDummy,size(runSet.fOrigList));
+    runSet.nDummy = repmat(runSet.nDummy,size(runSet.fOrigList,1),1);
 end
 if size(runSet.nDummy,1)~=size(runSet.fOrigList,1)
     dbstack; error('somthing wrong')
 end
 
+% if size(runSet.fList,2)>1 && size(runSet.nDummy,2)==1
+    nDummy = repmat(runSet.nDummy,1,size(runSet.fList,2));
+% end
+
 %% Individual files
 runSet.fPlumbList = cell(size(runSet.fOrigList));
-for r = 1:length(runSet.fOrigList)
-    cmd{end+1} = ['echo '' ''' num2str(r) '/' num2str(length(runSet.fOrigList))];
+for r = 1:numel(runSet.fOrigList)
+    cmd{end+1} = ['echo '' ''' num2str(r) '/' num2str(numel(runSet.fOrigList))];
     fIn = runSet.fOrigList{r};
     [~,fOut,~] = fileparts(replace(fIn,'.nii.gz','')); fOut = fullfile(runSet.wd,fOut); if ~exist(fOut,'dir'); mkdir(fOut); end
     fOut = fullfile(fOut,'setPlumb_volTs.nii.gz');
     if force || ~exist(fOut,'file')
         cmd{end+1} = '3dcalc -overwrite \';
-        cmd{end+1} = ['-a ' fIn '[' num2str(runSet.nDummy(r)) '..$] \'];
+        cmd{end+1} = ['-a ' fIn '[' num2str(nDummy(r)) '..$] \'];
         cmd{end+1} = ['-expr a \'];
         if verbose
             cmd{end+1} = ['-prefix ' fOut];
@@ -47,6 +51,7 @@ for r = 1:length(runSet.fOrigList)
     
     runSet.fPlumbList{r} = fOut;
 end
+runSet.nFrameOrig = runSet.nFrame;
 runSet.nFrame = runSet.nFrame-runSet.nDummy;
 
 %% Launch command

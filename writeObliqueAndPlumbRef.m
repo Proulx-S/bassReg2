@@ -10,7 +10,7 @@ cmd = {srcAfni};
 
 %% Geom
 fIn = runSet.fGeom;
-nFrame = MRIread(fIn,1); nFrame = nFrame.nframes;
+nFrame = MRIget(fIn,'nframes');
 if nFrame>8; nFrameRef = 8; else nFrameRef = nFrame; end
 fObliqueRef = fullfile(runSet.wd,'setOblique_volRef.nii.gz');
 if force || ~exist(fObliqueRef,'file')
@@ -30,17 +30,19 @@ if force || ~exist(fPlumbRef,'file')
 end
 
 %% Individual files
-nFrameList = zeros(size(runSet.fOrigList));
-vSizeList  = zeros(size(runSet.fOrigList,1),3);
-for r = 1:size(runSet.fOrigList,1)
-    cmd{end+1} = ['echo '' ''' num2str(r) '/' num2str(length(runSet.fOrigList))];
+nFrameList = zeros([1 size(runSet.fOrigList)]);
+vSizeList  = zeros([3 size(runSet.fOrigList)]);
+for r = 1:numel(runSet.fOrigList)
+    cmd{end+1} = ['echo '' ''' num2str(r) '/' num2str(numel(runSet.fOrigList))];
     fIn = runSet.fOrigList{r};
     [~,fOut,~] = fileparts(replace(fIn,'.nii.gz','')); fOut = fullfile(runSet.wd,fOut); if ~exist(fOut,'dir'); mkdir(fOut); end
     fOut = fullfile(fOut,'runOblique_volRef.nii.gz');
+    nFrame = MRIget(fIn,'nframes'); if nFrame>8; nFrameRef = 8; else; nFrameRef = nFrame; end
+    vSize = MRIget(fIn,'voxSize');
     if force || ~exist(fOut,'file')
-        mri = MRIread(fIn,1);
-        nFrame = mri.nframes; if nFrame>8; nFrameRef = 8; else; nFrameRef = nFrame; end
-        vSize  = [mri.xsize mri.ysize mri.zsize];
+        % mri = MRIread(fIn,1);
+        % nFrame = mri.nframes; if nFrame>8; nFrameRef = 8; else; nFrameRef = nFrame; end
+        % vSize  = [mri.xsize mri.ysize mri.zsize];
         cmd{end+1} = '3dcalc -overwrite \';
         cmd{end+1} = ['-a ' fIn '[0..' num2str(nFrameRef-1) '] \'];
         cmd{end+1} = ['-expr a \'];
@@ -49,13 +51,12 @@ for r = 1:size(runSet.fOrigList,1)
         else
             cmd{end+1} = ['-prefix ' fOut ' > /dev/null 2>&1'];
         end
-
-        save(fullfile(fileparts(fOut),'imParam.mat'),'nFrame','vSize');
-    else
-        load(fullfile(fileparts(fOut),'imParam.mat'),'nFrame','vSize');
+    %     save(fullfile(fileparts(fOut),'imParam.mat'),'nFrame','vSize');
+    % else
+    %     load(fullfile(fileparts(fOut),'imParam.mat'),'nFrame','vSize');
     end
-    nFrameList(r,1) = nFrame;
-    vSizeList(r,:) = vSize;
+    nFrameList(1,r) = nFrame;
+    vSizeList(:,r)  = vSize;
 
     fIn = fOut;
     fOut = replace(fOut,'runOblique_volRef.nii.gz','runPlumb_volRef.nii.gz');
@@ -72,9 +73,12 @@ for r = 1:size(runSet.fOrigList,1)
     end
 end
 
-runSet.nFrame = nFrameList;
-runSet.vSize  = vSizeList;
-if any(diff(runSet.nFrame)); dbstack; error('something wierd'); end
+runSet.nFrame = permute(nFrameList,[2 3 1]); runSet.nFrame = runSet.nFrame(:,1,:);
+runSet.vSize  = permute(vSizeList ,[2 3 1]); runSet.vSize  = runSet.vSize(:,1,:);
+
+% runSet.nFrame = reshape(nFrameList,size(runSet.fList));                      runSet.nFrame = runSet.nFrame(:,1);
+% runSet.vSize  = permute(reshape(vSizeList',[3 size(runSet.fList)]),[2 3 1]); runSet.vSize  = permute(runSet.vSize(:,1,:),[2 3 1]);
+if any(diff(runSet.nFrame)); warning(['runs in ' runSet.label ' set don''t all have the same number of frame']); end
 
 
 

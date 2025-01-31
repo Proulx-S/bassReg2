@@ -27,9 +27,19 @@ nRun = size(runSet.fEstimList,1);
 if isempty(baseFileList)
     switch param.baseType
         case 'first'
-            runSet.fEstimListBase = strcat(runSet.fEstimList,'[0]');
+            runSet.fEstimListBase = cell(size(runSet.fEstimList));
+            for r = 1:nRun
+                runSet.fEstimListBase{r} = runSet.fEstimList{r};
+                runSet.fEstimListBase{r}(strfind(runSet.fEstimListBase{r},'['):strfind(runSet.fEstimListBase{r},']')) = [];
+            end
+            runSet.fEstimListBase = strcat(runSet.fEstimListBase,'[0]');
         case 'av'
-            [a,b,~] = fileparts(replace(runSet.fEstimList,'.nii.gz',''));
+            runSet.fEstimListBase = cell(size(runSet.fEstimList));
+            for r = 1:nRun
+                runSet.fEstimListBase{r} = runSet.fEstimList{r};
+                runSet.fEstimListBase{r}(strfind(runSet.fEstimListBase{r},'['):strfind(runSet.fEstimListBase{r},']')) = [];
+            end
+            [a,b,~] = fileparts(replace(runSet.fEstimListBase,'.nii.gz',''));
             runSet.fEstimListBase = fullfile(a,strcat('av_',b,'.nii.gz'));
         case 'mcAv'
             dbstack; error('code that')
@@ -43,6 +53,7 @@ end
 
 
 %% Run moco on each run
+runSet.cmd            = cell(size(runSet.fEstimList));
 runSet.fMocoList      = cell(size(runSet.fEstimList));
 runSet.fMocoParamList = cell(size(runSet.fEstimList));
 runSet.fMocoMatList   = cell(size(runSet.fEstimList));
@@ -54,60 +65,62 @@ for r = 1:nRun
     fIn = runSet.fEstimList{r};
     fBase = runSet.fEstimListBase{r};
     fOut = strsplit(fIn,filesep); fOut{end} = ['mcWR_' fOut{end}]; fOut = strjoin(fOut,filesep);
+    fOut(strfind(fOut,'['):strfind(fOut,']')) = [];
     % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcWR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
     % fOutPear = strsplit(fIn,filesep); fOutPear{end} = ['mcWR_' fOutPear{end}]; fOutPear{end} = strsplit(fOutPear{end},'_'); fOutPear{end}{end} = 'pearCor.nii.gz'; fOutPear{end} = strjoin(fOutPear{end},'_'); fOutPear = strjoin(fOutPear,filesep);
     fOutParam = replace(fOut,'.nii.gz','');
     % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
+    cmd = {srcAfni};
+    %%% moco
+    cmd{end+1} = '3dAllineate -overwrite \';
+    cmd{end+1} = ['-base ' fBase ' \'];
+    cmd{end+1} = ['-source ' fIn ' \'];
+    cmd{end+1} = ['-prefix ' fOut ' \'];
+    cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
+    cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
+    cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
+    cmd{end+1} = ['-SavePear ' fOutParam '_pear.nii.gz \'];
+    % afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'};
+    afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'};
+    cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
+    if ~isempty(fMask)
+        disp(['  using mask: ' fMask])
+        cmd{end+1} = ['-emask ' fMask ' \'];
+    else
+        disp('  not using mask')
+    end
+    if explicitlyFixThroughPlane
+        cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
+        disp('  explicitly enforcing no through-plane motion')
+    end
+    cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \';
+    if spSmFac>0
+        fineBlur = mean(runSet.vSize(1:2))*param.spSmFac;
+        cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
+    end
+    % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
+    % cmd{end+1} = ['-PearSave ' tempname ' \']; % not working (because single slice ??)
+    cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
+    % disp(strjoin(cmd,newline))
+
+    % %%% detect smoothing
+    % sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
+    % n = MRIread(fIn,1); n = n.nframes - 1;
+    % nLim = [0 n] + [1 -1].*((sm+1)/2-1);
+
+    % %%% average
+    % cmd{end+1} = '3dTstat -overwrite \';
+    % cmd{end+1} = ['-prefix ' fOutAv ' \'];
+    % cmd{end+1} = '-mean \';
+    % cmd{end+1} = [fOut '[' num2str(nLim(1)) '..' num2str(nLim(2)) ']'];
+
+    runSet.fMocoList{r} = fOut;
     if force || ~exist(fOut,'file')
-        cmd = {srcAfni};
-        %%% moco
-        cmd{end+1} = '3dAllineate -overwrite \';
-        cmd{end+1} = ['-base ' fBase ' \'];
-        cmd{end+1} = ['-source ' fIn ' \'];
-        cmd{end+1} = ['-prefix ' fOut ' \'];
-        cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
-        cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
-        cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
-        % afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'};
-        afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'};
-        cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
-        if ~isempty(fMask)
-            disp(['  using mask: ' fMask])
-            cmd{end+1} = ['-emask ' fMask ' \'];
-        else
-            disp('  not using mask')
-        end
-        if explicitlyFixThroughPlane
-            cmd{end+1} = '-parfix 2 0 -parfix 4 0 -parfix 5 0 \';
-            disp('  explicitly enforcing no through-plane motion')
-        end
-        cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \';
-        if spSmFac>0
-            fineBlur = mean(runSet.vSize(1:2))*param.spSmFac;
-            cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
-        end
-        % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
-        % cmd{end+1} = ['-PearSave ' tempname ' \']; % not working (because single slice ??)
-        cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
-        % disp(strjoin(cmd,newline))
-
-        % %%% detect smoothing
-        % sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));
-        % n = MRIread(fIn,1); n = n.nframes - 1;
-        % nLim = [0 n] + [1 -1].*((sm+1)/2-1);
-
-        % %%% average
-        % cmd{end+1} = '3dTstat -overwrite \';
-        % cmd{end+1} = ['-prefix ' fOutAv ' \'];
-        % cmd{end+1} = '-mean \';
-        % cmd{end+1} = [fOut '[' num2str(nLim(1)) '..' num2str(nLim(2)) ']'];
-
         %%% execute command
-        cmd = strjoin(cmd,newline); % disp(cmd)
         if verbose>1
-            [status,cmdout] = system(cmd,'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+            [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
         else
-            [status,cmdout] = system(cmd); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
+            [status,cmdout] = system(strjoin(cmd,newline)); if status || isempty(cmdout); dbstack; error(cmdout); error('x'); end
         end
 
         % %%% adjust motion estimates for smoothing effects
@@ -123,6 +136,7 @@ for r = 1:nRun
     end
 
     %%% output files
+    runSet.cmd{r} = cmd';
     runSet.fMocoList{r} = fOut;
     % runSet.fMocoAvList{r} = fOutAv;
     runSet.fMocoParamList{r} = [fOutParam '.param.1D'];
@@ -135,11 +149,29 @@ end
 %% Summarize moco data
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
-
-
+% runSet.fMocoSmr = summarizeVolTs2(runSet.fMocoList,[],[],runSet.nDummy,[],forceThis,verboseThis);
+runSet.fMocoSmr = summarizeVolTs4(runSet.fMocoList,0,runSet.dataType,forceThis,verboseThis);
 runSet.param   = param;
 runSet.ppLabel = ppLabel;
+
+
+% forceThis   = force;
+% verboseThis = verbose;
+% for r = 1:nRun
+%     ind = strfind(runSet.fEstimList{r},'['):strfind(runSet.fEstimList{r},']');
+%     if ~isempty(ind)
+%         ind([1 end]) = [];
+%         tmp = strsplit(runSet.fEstimList{r}(ind),'..');
+%         if strcmp(tmp{2},'$'); tmp{2} = runSet.nFrame(r); else tmp{2} = str2double(tmp{2}); end
+%         tmp{1} = str2double(tmp{1});
+%         runSet.nFrame(r) = diff([tmp{:}]);
+%     end
+% end
+% summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+
+
+% runSet.param   = param;
+% runSet.ppLabel = ppLabel;
 
 return
 

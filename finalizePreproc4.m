@@ -1,4 +1,4 @@
-function finalPreprocFiles = finalizePreproc2(initFiles,preprocFiles,force,verbose)
+function finalPreprocFiles = finalizePreproc4(initFiles,preprocFiles,force,verbose)
 global srcAfni
 if ~exist('force','var');     force = []; end
 if ~exist('verbose','var'); verbose = []; end
@@ -6,7 +6,10 @@ if isempty(force);            force = 0; end
 if isempty(verbose);        verbose = 0; end
 
 % if preprocFiles.updatedFlag;  force = 1; end % override force=0 when preproc was updated
-bidsDerivDir = initFiles.bidsDerivDir;
+[~,bidsSubFolder] = fileparts(fileparts(initFiles.fOrigList{1}));
+
+bidsDerivDir = fullfile(initFiles.info.bidsDir,['sub-' initFiles.info.sub],['ses-' initFiles.info.ses],bidsSubFolder,'derivatives',['set-' initFiles.label]);
+% bidsDerivDir = initFiles.bidsDerivDir;
 % bidsDerivDir = fullfile(fileparts(fileparts(initFiles.fOrigList{1})),'derivatives');
 
 %% Combine transformation
@@ -108,9 +111,12 @@ end
 %% Summarize
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis)
-% fOrigList = replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz')
-summarizeVolTs(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis)
+finalPreprocFiles.fPreprocSmr = summarizeVolTs2(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis);
+% finalPreprocFiles.fOrigSmr    = summarizeVolTs2(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis);
+
+% summarizeVolTs(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis)
+% % fOrigList = replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz')
+% summarizeVolTs(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis)
 
 
 

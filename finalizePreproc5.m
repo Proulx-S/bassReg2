@@ -1,4 +1,4 @@
-function finalPreprocFiles = finalizePreproc2(initFiles,preprocFiles,force,verbose)
+function finalPreprocFiles = finalizePreproc5(initFiles,preprocFiles,force,verbose)
 global srcAfni
 if ~exist('force','var');     force = []; end
 if ~exist('verbose','var'); verbose = []; end
@@ -6,20 +6,23 @@ if isempty(force);            force = 0; end
 if isempty(verbose);        verbose = 0; end
 
 % if preprocFiles.updatedFlag;  force = 1; end % override force=0 when preproc was updated
-bidsDerivDir = initFiles.bidsDerivDir;
+[~,bidsSubFolder] = fileparts(fileparts(initFiles.fOrigList{1}));
+
+bidsDerivDir = fullfile(initFiles.info.bidsDir,['sub-' initFiles.info.sub],['ses-' initFiles.info.ses],bidsSubFolder,'derivatives',['set-' initFiles.label]);
+% bidsDerivDir = initFiles.bidsDerivDir;
 % bidsDerivDir = fullfile(fileparts(fileparts(initFiles.fOrigList{1})),'derivatives');
 
 %% Combine transformation
 finalPreprocFiles           = rmfield(initFiles,'fEstimList');
-finalPreprocFiles.fTransList    = cell(size(finalPreprocFiles.fOrigList,1),length(preprocFiles));
-finalPreprocFiles.fTransCatList = cell(size(finalPreprocFiles.fOrigList,1),1);
-finalPreprocFiles.ppLabelList   = cell(1,length(preprocFiles));
+finalPreprocFiles.fTransList    = cell(size(finalPreprocFiles.fPlumbList,1),1,size(preprocFiles,3));
+finalPreprocFiles.fTransCatList = cell(size(finalPreprocFiles.fPlumbList,1),1,1                   );
+finalPreprocFiles.ppLabelList   = cell(1                                   ,1,length(preprocFiles));
 for i = 1:length(preprocFiles)
     if isempty(preprocFiles{i}); continue; end
-    finalPreprocFiles.ppLabelList{1,i} = preprocFiles{i}.ppLabel;
+    finalPreprocFiles.ppLabelList{1,1,i} = preprocFiles{1,1,i}.ppLabel;
     switch preprocFiles{i}.ppLabel
         case {'withinRunMoco' 'betweenRunMoco'}
-            finalPreprocFiles.fTransList(:,i) = replace(preprocFiles{i}.fMocoList,'.nii.gz','.aff12.1D');
+            finalPreprocFiles.fTransList(:,:,i) = replace(preprocFiles{i}.fMocoList,'.nii.gz','.aff12.1D');
         case 'betweenSesMoco'
             if length(preprocFiles{i}.fMocoList)~=1; dbstack; error('figure that out'); end
             finalPreprocFiles.fTransList(:,i) = repmat(replace(preprocFiles{i}.fMocoList,'.nii.gz','.aff12.1D'),size(finalPreprocFiles.fTransList(:,i)));
@@ -27,32 +30,36 @@ for i = 1:length(preprocFiles)
             dbstack; error('code that')
     end
 end
-[finalPreprocFiles.fTransList{:,all(cellfun('isempty',finalPreprocFiles.fTransList),1)}] = deal('');
-[finalPreprocFiles.ppLabelList{:,all(cellfun('isempty',finalPreprocFiles.ppLabelList),1)}] = deal('');
+[finalPreprocFiles.fTransList{:,:,all(cellfun('isempty',finalPreprocFiles.fTransList),1)}] = deal('');
+[finalPreprocFiles.ppLabelList{:,:,all(cellfun('isempty',finalPreprocFiles.ppLabelList),1)}] = deal('');
 
 cmd = {srcAfni};
 for r = 1:size(finalPreprocFiles.fTransList,1)
-    [~,b,~] = fileparts(fileparts(finalPreprocFiles.fTransList{r,1}));
+    [~,b,~] = fileparts(fileparts(finalPreprocFiles.fTransList{r,1,1}));
     finalPreprocFiles.fTransCatList{r} = fullfile(bidsDerivDir,b);
     if ~exist(finalPreprocFiles.fTransCatList{r},'dir'); mkdir(finalPreprocFiles.fTransCatList{r}); end
     finalPreprocFiles.fTransCatList{r} = fullfile(finalPreprocFiles.fTransCatList{r},'transCat.aff12.1D');
 
     if force || ~exist(finalPreprocFiles.fTransCatList{r},'file')
         cmd{end+1} = ['rm -f ' finalPreprocFiles.fTransCatList{r}];
-        cmd{end+1} = ['head -1 ' strjoin(finalPreprocFiles.fTransList(r,1),' ') ' > ' finalPreprocFiles.fTransCatList{r}];
-        cmd{end+1} = ['cat_matvec ' strjoin(flip(finalPreprocFiles.fTransList(r,:)),' ') ' >> ' finalPreprocFiles.fTransCatList{r}];
+        cmd{end+1} = ['head -1 ' strjoin(finalPreprocFiles.fTransList(r,1,1),' ') ' > ' finalPreprocFiles.fTransCatList{r}];
+        cmd{end+1} = ['cat_matvec ' strjoin(flip(finalPreprocFiles.fTransList(r,1,:)),' ') ' >> ' finalPreprocFiles.fTransCatList{r}];
     end
 end
 
 
 
 %% Apply transformations
-finalPreprocFiles.fPreprocList = cell(size(finalPreprocFiles.fTransCatList));
-fPreprocUpdated                = false(size(finalPreprocFiles.fTransCatList));
-for r = 1:size(finalPreprocFiles.fTransList,1)
+finalPreprocFiles.fPreprocList = cell(size(finalPreprocFiles.fPlumbList));
+fPreprocUpdated                = false(size(finalPreprocFiles.fPlumbList));
+if size(finalPreprocFiles.fTransCatList,2)==1
+    finalPreprocFiles.fTransCatList = repmat(finalPreprocFiles.fTransCatList,[1 size(finalPreprocFiles.fPreprocList,2)]);
+end
+% finalPreprocFiles.fTransCatList = 
+for r = 1:numel(finalPreprocFiles.fPlumbList)
     fIn    = finalPreprocFiles.fPlumbList{r};
     fTrans = finalPreprocFiles.fTransCatList{r};
-    fOut   = fullfile(fileparts(finalPreprocFiles.fTransCatList{r}),'preproc_volTs.nii.gz');
+    fOut   = fullfile(fileparts(finalPreprocFiles.fPlumbList{r}),'preproc_volTs.nii.gz');
 
     if force || ~exist(fOut,'file')
         cmd{end+1} = '3dAllineate -overwrite -nocmass -final wsinc5 \';
@@ -92,12 +99,12 @@ else
     disp(' rewriting preproc data at setOblique of ses-1')
     mriOblique = MRIread(fGeomSes1);
 end
-for r = 1:size(finalPreprocFiles.fPreprocList,1)
-    disp(['file ' num2str(r) '/' num2str(size(finalPreprocFiles.fPreprocList,1))])
+for r = 1:numel(finalPreprocFiles.fPreprocList)
+    disp(['file ' num2str(r) '/' num2str(numel(finalPreprocFiles.fPreprocList))])
     if fPreprocUpdated(r)
-        mri = MRIread(finalPreprocFiles.fPreprocList{r,1});
+        mri = MRIread(finalPreprocFiles.fPreprocList{r});
         mriOblique.vol = mri.vol;
-        MRIwrite(mriOblique,finalPreprocFiles.fPreprocList{r,1});
+        MRIwrite(mriOblique,finalPreprocFiles.fPreprocList{r});
         disp(' done')
     else
         disp(' already done, skipping')
@@ -108,12 +115,68 @@ end
 %% Summarize
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis)
-% fOrigList = replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz')
-summarizeVolTs(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis)
+finalPreprocFiles.fPreprocSmr = summarizeVolTs4(finalPreprocFiles.fPreprocList,0,finalPreprocFiles.dataType,forceThis,verboseThis);
+% finalPreprocFiles.fPreprocSmr = summarizeVolTs2(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis);
+% finalPreprocFiles.fOrigSmr    = summarizeVolTs2(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis);
+
+% summarizeVolTs(finalPreprocFiles.fPreprocList,[],initFiles.nFrame,[],initFiles.dataType,forceThis,verboseThis)
+% % fOrigList = replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz')
+% summarizeVolTs(initFiles.fOrigList,replace(finalPreprocFiles.fPreprocList,'preproc_volTs.nii.gz','orig_volTs.nii.gz'),initFiles.nFrame,initFiles.nDummy,initFiles.dataType,forceThis,verboseThis)
 
 
 
+
+
+
+%% Multivariate data transform
+if ismember('PC',finalPreprocFiles.dataType)
+    switch size(finalPreprocFiles.fPreprocList,2)
+        case 3
+            %%% Transform preprocessed data
+            fReal = finalPreprocFiles.fPreprocList(:,2);
+            fImag = finalPreprocFiles.fPreprocList(:,3);
+            [~,fPhs] = cmplx2plr(fReal,fImag,force);
+            finalPreprocFiles.fPreprocList(:,end+1) = fPhs;
+            % finalPreprocFiles.fPreprocList(:,2) = fPhs;
+            % finalPreprocFiles.fPreprocList(:,3) = [];
+
+            %%% Transform summary data
+            fReal = finalPreprocFiles.fPreprocSmr.runAv.fList(:,2);
+            fImag = finalPreprocFiles.fPreprocSmr.runAv.fList(:,3);
+            [~,fPhs] = cmplx2plr(fReal,fImag,force);
+            finalPreprocFiles.fPreprocSmr.runAv.fList(:,end+1) = fPhs;
+            % finalPreprocFiles.fPreprocSmr.runAv.fList = cat(2,...
+            %     finalPreprocFiles.fPreprocSmr.runAv.fList(:,1),...
+            %     fPhs                                                          );
+
+            fReal = finalPreprocFiles.fPreprocSmr.runFML.fList(:,2);
+            fImag = finalPreprocFiles.fPreprocSmr.runFML.fList(:,3);
+            [~,fPhs] = cmplx2plr(fReal,fImag,force);
+            finalPreprocFiles.fPreprocSmr.runFML.fList(:,end+1) = fPhs;
+            % finalPreprocFiles.fPreprocSmr.runFML.fList = cat(2,...
+            %     finalPreprocFiles.fPreprocSmr.runFML.fList(:,1),...
+            %     fPhs                                                          );
+
+            
+            fReal = finalPreprocFiles.fPreprocSmr.sesCat.runAv.fList(:,2);
+            fImag = finalPreprocFiles.fPreprocSmr.sesCat.runAv.fList(:,3);
+            [~,fPhs] = cmplx2plr(fReal,fImag,force);
+            finalPreprocFiles.fPreprocSmr.sesCat.runAv.fList(:,end+1) = fPhs;
+            % finalPreprocFiles.fPreprocSmr.sesCat.runAv.fList = cat(2,...
+            %     finalPreprocFiles.fPreprocSmr.sesCat.runAv.fList(:,1),...
+            %     fPhs                                                          );
+
+            fReal = finalPreprocFiles.fPreprocSmr.sesAv.runAv.fList(:,2);
+            fImag = finalPreprocFiles.fPreprocSmr.sesAv.runAv.fList(:,3);
+            [~,fPhs] = cmplx2plr(fReal,fImag,force);
+            finalPreprocFiles.fPreprocSmr.sesAv.runAv.fList(:,end+1) = fPhs;
+            % finalPreprocFiles.fPreprocSmr.sesAv.runAv.fList = cat(2,...
+            %     finalPreprocFiles.fPreprocSmr.sesAv.runAv.fList(:,1),...
+            %     fPhs                                                          );
+        otherwise
+            dbstack; error('more than one venc? code that')
+    end
+end
 
 
 

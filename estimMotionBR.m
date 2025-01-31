@@ -51,6 +51,8 @@ end
 disp('estimating between-run motion')
 runSet.fMocoList = cell(size(runSet.fEstimList));
 runSet.manBrainMaskInv = fMask;
+vSize  = permute(runSet.vSize,[3 1 2]);
+nFrame = permute(runSet.nFrame,[3 1 2]);
 for I = 1:numel(runSet.fEstimList)
     disp([' run' num2str(I) '/' num2str(length(runSet.fEstimList))])
     %%% set filename
@@ -59,6 +61,7 @@ for I = 1:numel(runSet.fEstimList)
     fOut = strsplit(fIn,filesep); fOut{end} = ['mcBR_' fOut{end}]; fOut = strjoin(fOut,filesep);
     % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcBR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
     fOutParam = replace(fOut,'.nii.gz','');
+    % fOutPear  = replace(fOut,'.nii.gz','_pear.nii.gz');
     % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
     if force || ~exist(fOut,'file')
         cmd = {srcAfni};
@@ -85,10 +88,11 @@ for I = 1:numel(runSet.fEstimList)
         cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -cmass+xz \'; 
         % cmd{end+1} = '-maxrot 1 -maxshf 0.5 \'; 
         if spSmFac>0
-            fineBlur = mean(runSet.vSize(I,1:2))*spSmFac;
+            fineBlur = mean(vSize(1:2,I))*spSmFac;
             cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
         end
         % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
+        % cmd{end+1} = ['-PearSave ' fOutPear ' \'];
         cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
         if verbose; disp(strjoin(cmd,newline)); end
 
@@ -106,6 +110,21 @@ for I = 1:numel(runSet.fEstimList)
 
         disp(['  outputs: ' fOutParam])
         disp('  done')
+
+
+
+
+        %%%
+        if I==1
+            if nFrame(1,I)>1
+                [dummyParam, dummyMatrix] = getDummyMcParamFile(cmd,1);
+            else
+                [dummyParam, dummyMatrix] = getDummyMcParamFile(cmd);
+            end
+        end
+
+
+
     else
         disp(['  outputs: ' fOutParam])
         disp('  already done, skipping')
@@ -114,15 +133,18 @@ for I = 1:numel(runSet.fEstimList)
     %%% output files
     runSet.fMocoList{I} = fOut;
     runSet.fMask{I}     = fMask;
+
+
+    
 end
 
 
 
-%% Summarize moco data
+% %% Summarize moco data
 forceThis   = force;
 verboseThis = verbose;
-summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
-
+% summarizeVolTs(runSet.fMocoList,[],runSet.nFrame,[],runSet.dataType,forceThis,verboseThis)
+runSet.fMocoSmr = summarizeVolTs4(runSet.fMocoList,0,runSet.dataType,forceThis,verboseThis);
 
 runSet.param   = param;
 runSet.ppLabel = ppLabel;

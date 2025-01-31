@@ -6,12 +6,12 @@ ppLabel = 'betweenSesMoco';
 
 if exist('param','var') && ~isempty(param) && isfield(param,'explicitlyFixThroughPlane'); explicitlyFixThroughPlane = param.explicitlyFixThroughPlane; else; explicitlyFixThroughPlane = []; end
 if exist('param','var') && ~isempty(param) && isfield(param,'afni3dAlineateArg'); afni3dAlineateArg = param.afni3dAlineateArg; else; afni3dAlineateArg = {}; end
-if exist('param','var') && ~isempty(param) && isfield(param,'spSmFac'); spSmFac = param.spSmFac; else; spSmFac = []; end
+if exist('param','var') && ~isempty(param) && isfield(param,'spSmFac'); spSmFac = param.spSmFac; else; spSmFac = []; end % fraction of voxel size
 
 if ~exist('fMask','var'); fMask = []; end
 if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
-if ~exist('spSmFac','var'); spSmFac = 0; end
+if ~exist('spSmFac','var'); spSmFac = 0; end % fraction of voxel size
 if isempty(explicitlyFixThroughPlane); explicitlyFixThroughPlane = 0; end
 if isempty(afni3dAlineateArg); afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'}; end
 if isempty(force); force = 0; end
@@ -44,11 +44,36 @@ if isempty(fBase)
     end
 else
     switch param.sourceType
+        % case 'frstRun_avFrame'
+        %     % Define source
+        %     runSet.fMocoSmr.runAv
+        %     fSourceList = cellstr(fullfile(runSet.wd,'av_cat_mcBR_av_mcWR_setPlumb_volTs.nii.gz'));
+        %     runSet = wr2br(runSet);
+        %     runSet.fEstimList = fSourceList;
+        %     runSet.fMaskList = {};
+        %     runSet.fMask     = {};
+        % 
+        %     % Define base in source session set
+        %     mriBase = MRIread(fBase);
+        %     mriBaseSetPlumb = MRIread(runSet.fPlumbList{1},1);
+        %     mriBaseSetPlumb.vol = mriBase.vol;
+        % 
+        %     fBaseSetPlumb = strsplit(char(fSourceList),filesep);
+        %     fBaseSetPlumb{end} = ['mcBSbase_' fBaseSetPlumb{end}];
+        %     fBaseSetPlumb = strjoin(fBaseSetPlumb,filesep);
+        % 
+        %     MRIwrite(mriBaseSetPlumb,fBaseSetPlumb);
+        % 
+        %     runSet.fBase         = fBase;
+        %     runSet.fBaseSetPlumb = fBaseSetPlumb;
         case 'avRun_avFrame'
             % Define source
-            fSourceList = cellstr(fullfile(runSet.wd,'av_cat_mcBR_av_mcWR_setPlumb_volTs.nii.gz'));
+            fSourceList = cellstr(runSet.fMocoSmr.sesAv.runAv.fList);
+            % fSourceList = cellstr(fullfile(runSet.wd,'av_cat_mcBR_av_mcWR_setPlumb_volTs.nii.gz'));
             runSet = wr2br(runSet);
             runSet.fEstimList = fSourceList;
+            runSet.fMaskList = {};
+            runSet.fMask     = {};
 
             % Define base in source session set
             mriBase = MRIread(fBase);
@@ -119,9 +144,9 @@ for I = 1:numel(runSet.fEstimList)
         % cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -nocmass \';
         cmd{end+1} = '-nopad -conv 0 -nmatch 100% -onepass -cmass+xz \';
         % cmd{end+1} = '-maxrot 1 -maxshf 0.5 \';
-        if spSmFac>0
-            fineBlur = mean(runSet.vSize(I,1:2))*spSmFac;
-            cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
+        if spSmFac>0 % fraction of voxel size
+            fineBlur = mean(runSet.vSize(I,1:2))*spSmFac; % fraction of voxel size to mm
+            cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \']; % mm
         end
         % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
         cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
@@ -148,7 +173,9 @@ for I = 1:numel(runSet.fEstimList)
 
     %%% output files
     runSet.fMocoList{I} = fOut;
-    runSet.fMask{I}     = fMask;
+    runSet.fMaskList{I} = fMask;
+    runSet = rmfield(runSet,'fMask');
+    runSet = rmfield(runSet,'fMasks');
 end
 
 
