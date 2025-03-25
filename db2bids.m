@@ -1,4 +1,4 @@
-function [bidsDir,bhvrDir,phsDir] = db2bids(sesDb,sub,ses,info,force)
+function [dirs,dirsOrig] = db2bids(sesDb,sub,ses,info,force)
 if ~exist('force','var'); force = []; end
 if isempty(force);        force = 0 ; end
 
@@ -24,9 +24,10 @@ for bs = 1:length(bidsSubDir)
         disp('bids data not found')
     end
 end
-bidsDir = fullfile(info.prcDir,'bids',['sub-' sub],['ses-' ses]);
+dirsOrig.bids = fullfile(sesDb,'bids');
+dirs.bids     = fullfile(info.prcDir,'bids',['sub-' sub],['ses-' ses]);
 
-renameBids(bidsDir,sub,ses);
+renameBids(dirs.bids,sub,ses);
 
 
 
@@ -43,9 +44,11 @@ if exist(from,'dir') && ~isempty(dir(from))
     else
         disp('already done, skipping it')
     end
-    bhvrDir = to;
+    dirsOrig.bhvr = from;
+    dirs.bhvr     = to;
 else
-    bhvrDir = [];
+    dirsOrig.bhvr = [];
+    dirs.bhvr     = [];
     disp('no data available')
 end
 
@@ -62,9 +65,11 @@ if exist(from,'dir') && ~isempty(dir(fullfile(from,'*.mat')))
     else
         disp('already done, skipping it')
     end
-    phsDir = to;
+    dirsOrig.phs = from;
+    dirs.phs     = to;
 else
-    phsDir = [];
+    dirsOrig.phs = [];
+    dirs.phs     = [];
     disp('no data available')
 end
 
