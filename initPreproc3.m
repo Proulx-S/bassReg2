@@ -1,5 +1,5 @@
 function runSet = initPreproc3(runSet,geomRef,param,skipMask,force,verbose)
-global srcAfni
+global src
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end
 if ~isfield(runSet,'label');         runSet.label = []; end
@@ -22,7 +22,7 @@ if isempty(duporigin);          duporigin = 0     ; end
 
 
 % wd
-runSet.wd   = fullfile(runSet.info.prcDir,['sub-' runSet.sub],['ses-' runSet.ses],['set-' runSet.label]);
+runSet.wd   = fullfile(runSet.info.prcDir,'prc',['sub-' runSet.sub],['ses-' runSet.ses],['set-' runSet.label]);
 % runSet.wd = fullfile(runSet.wd,['sub-' runSet.sub],['ses-' runSet.ses]);
 % runSet.wd = fullfile(runSet.wd,['set-' runSet.label]);
 if ~exist(runSet.wd,'dir'); mkdir(runSet.wd); end
@@ -51,12 +51,16 @@ runSet.fMasks    = runSet.initFiles.fMasks;
 
 
 
-function [runSet,fSort] = doIt(runSet,dataType,geomRef,param,skipMask,force,verbose)
-global srcAfni
 
-%% %%%%%%%%%%%%%%%
-% Massage inputs %
-%%%%%%%%%%%%%%% %%
+
+
+
+function [runSet,fSort] = doIt(runSet,dataType,geomRef,param,skipMask,force,verbose)
+global src
+
+%%%%%%%%%%%%%%%%%
+%% Massage inputs
+%%%%%%%%%%%%%%%%%
 %%% funcSet
 %%%% sort by acquisition time
 % runSet.acqTime = runSet.date + getAcqTime(runSet.fOrigList);
@@ -105,12 +109,13 @@ else
     end
 end
 runSet.fGeom = fRef;
+%% %%%%%%%%%%%%%%
 
 
 
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Rewrite data at plumb without dummies %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Rewrite data at plumb without dummies
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Get oblique and plumb reference files
 disp([' writing oblique and plumb references (for ' num2str(length(fOrigList)) ' files)'])
 forceThis   = force;
@@ -125,12 +130,12 @@ end
 forceThis   = force;
 verboseThis = verbose;
 runSet = writeObliqueAndPlumb(runSet,forceThis,verboseThis);
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Prepare data for motion estimation %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Prepare data for motion estimation
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Detect number of runs
 nRun = size(runSet.fPlumbList,1);
 %%% Detect number of echos
@@ -179,56 +184,37 @@ if ismember({'singleEcho'},dataType) && ~ismember({'PC'},dataType)
 elseif ismember({'multiEcho'},dataType)
     dbstack; error('code that')
 elseif ismember({'PC'},dataType) && ismember({'singleEcho'},dataType)
-    mag0Ind = contains(runSet.fPlumbList,'rec-venc0') ...
-        & contains(runSet.fPlumbList,'part-mag');
-    phsDInd = contains(runSet.fPlumbList,'rec-vencDiff') ...
-        & contains(runSet.fPlumbList,'part-phase');
+    mag0Ind   = contains(runSet.fPlumbList,'rec-venc0') ...
+              & contains(runSet.fPlumbList,'part-mag');
+    phsDInd   = contains(runSet.fPlumbList,'rec-vencDiff') ...
+              & contains(runSet.fPlumbList,'part-phase');
+    cmplxDInd = contains(runSet.fPlumbList,'rec-vencDiff') ...
+              & contains(runSet.fPlumbList,'part-mag');
     
-    [fPhsDiffR,fPhsDiffI] = plr2cmplx(runSet.fPlumbList(mag0Ind),runSet.fPlumbList(phsDInd));
+    [fPhsDiffR,fPhsDiffI] = plr2cmplx(runSet.fPlumbList(mag0Ind),runSet.fPlumbList(phsDInd),forceThis);
     
-    runSet.fPlumbList = cat(2,runSet.fPlumbList(mag0Ind),fPhsDiffR,fPhsDiffI);
+    % All these timeseries will be motion-corrected using the first for motion estimation
+    runSet.fPlumbList = cat(2,runSet.fPlumbList(mag0Ind),fPhsDiffR,fPhsDiffI,runSet.fPlumbList(cmplxDInd));
 else
     dbstack; error('code that')
 end
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
-% %%% Simple single-echo functional timeseries
-% if all([ ismember({'volTs'}     ,dataType) ...
-%          ismember({'singleEcho'},dataType) ...
-%         ~ismember({'PC'}        ,dataType)])
-%     runSet.fEstimList = runSet.fPlumbList;
-% end
-% 
-% %%% Multi-echo (cross-echo rms images for later motion/distortion estimation)
-% if all([ ismember({'volTs'}    ,dataType) ...
-%          ismember({'multiEcho'},dataType) ...
-%         ~ismember({'PC'}       ,dataType)])
-%     dbstack; error('code that')
-% end
-% 
-% %%% Phase contrast data
-% if all([ismember({'volTs'}    ,dataType) ...
-%         ismember({'singleEcho'},dataType) ...
-%         ismember({'PC'}       ,dataType)])
-%     dbstack; error('code that')
-% end
-
-
-
-
-
-%% %%%%%%%%%%%%%%%
-% Summarize data %
-%%%%%%%%%%%%%%% %%
+%%%%%%%%%%%%%%%%%
+%% Summarize data
+%%%%%%%%%%%%%%%%%
 forceThis   = force;
 verboseThis = verbose;
 runSet.fPlumbSmr = summarizeVolTs4(runSet.fPlumbList,0,dataType,forceThis,verboseThis);
+%% %%%%%%%%%%%%%%
 
 
-%% %%%%%%%%%%%%%%%%%%
-% Draw preproc mask %
-%%%%%%%%%%%%%%%%%% %%
+
+%%%%%%%%%%%%%%%%%%%%
+%% Draw preproc mask
+%%%%%%%%%%%%%%%%%%%%
 
 if ~skipMask
     forceThis = force;
@@ -256,7 +242,7 @@ if ~skipMask
         runSet.fMasks.fMaskInv = replace(runSet.fMasks.fUlay,'_volTs.nii.gz','_volBrainMaskInv.nii.gz');
         copyfile(fMaskInv,runSet.fMasks.fMaskInv)
         runSet.fMasks.fMask    = replace(runSet.fMasks.fUlay,'_volTs.nii.gz','_volBrainMask.nii.gz'   );
-        cmd = {srcAfni};
+        cmd = {src.afni};
         cmd{end+1} = '3dcalc -overwrite \';
         cmd{end+1} = ['-prefix ' runSet.fMasks.fMask ' \'];
         cmd{end+1} = ['-a ' runSet.fMasks.fMaskInv ' \'];
@@ -277,6 +263,7 @@ else
     runSet.fMasks = [];
 end
 
+%% %%%%%%%%%%%%%%%%%
 
 
 
@@ -313,7 +300,7 @@ elseif all(ismember({'singleEcho'},dataType))
     %%% Single echo data
     %%%% Write means (no rms) for later visualization
     if nRun>1
-        cmd = {srcFs};
+        cmd = {src.afni};
         if nFrame>1
             fIn = fPlumbAv;
         else
@@ -386,7 +373,7 @@ elseif all(ismember({'multiEcho'},dataType))
 
     %%%% Write means (before rms) for later visualization
     if nRun>1
-        cmd = {srcFs};
+        cmd = {src.afni};
         if nFrame>1
             fPlumbCat = cell(1,size(fPlumbAv,2));
             fPlumbAvCat = cell(1,size(fPlumbAv,2));
@@ -451,7 +438,7 @@ elseif all(ismember({'multiEcho'},dataType))
 
 
     %%%% Write means (after rms) for later visualization
-    cmd = {srcFs};
+    cmd = {src.afni};
     if nFrame>1
         fEstimAv = cell(size(fEstim));
     end
@@ -508,7 +495,7 @@ fApply = fPlumb;
 %% QA: Visualize motion
 %%% between-run
 if nRun>1 && ~isempty(fEstimCat)
-    cmd = {srcFs};
+    cmd = {src.afni};
     cmd{end+1} = ['fslview -m single ' fEstimCat ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose
@@ -520,7 +507,7 @@ if nRun>1 && ~isempty(fEstimCat)
 end
 %%% within-run
 if nFrame>1
-    cmd = {srcFs};
+    cmd = {src.afni};
     cmd{end+1} = ['fslview -m single ' strjoin(fEstim,' ') ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose
@@ -592,7 +579,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     
     %%%% Smoothing
     disp('temporally smooth timeseries')
-    cmd = {srcAfni};
+    cmd = {src.afni};
     for R = 1:length(fEstim)
         fIn = fEstim{R};
         [d,fOut,~] = fileparts(replace(fIn,'.nii.gz',''));
@@ -648,7 +635,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     saveas(hFig,fFigSm)
     
     %%%% Visualize SNR before and after smoothing
-    cmd = {srcFs};
+    cmd = {src.afni};
     cmd{end+1} = ['fslview -m single ' fEstimBeforeSm ' ' fEstimAfterSm ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     fFslviewSm = cmd;
@@ -657,7 +644,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     end
 
     %%%% Write means for later visualization
-    cmd = {srcFs};
+    cmd = {src.afni};
     fEstimAv = cell(size(fEstim));
     for R = 1:length(fEstim)
         fIn = fEstim{R};
@@ -688,7 +675,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
 
     %% QA: Visualize motion (with smoothing)
     %%% between-run
-    cmd = {srcFs};
+    cmd = {src.afni};
     cmd{end+1} = ['fslview -m single ' fEstimCat ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose
@@ -696,7 +683,7 @@ if all(ismember({'volTs' 'lowSNR'},dataType))
     end
     fFslviewBRsm = cmd;
     %%% within-run
-    cmd = {srcFs};
+    cmd = {src.afni};
     cmd{end+1} = ['fslview -m single ' strjoin(fEstim,' ') ' &'];
     cmd = strjoin(cmd,newline); % disp(cmd)
     if param.verbose

@@ -1,5 +1,5 @@
 function smr = summarizeVolTs4(fList,nDummyNotRemoved,dataType,force,verbose)
-global srcAfni
+global src
 if ~exist('outTag','var');                   outTag = []; end
 if ~exist('nDummyNotRemoved','var'); nDummyNotRemoved = []; end
 if ~exist('force','var');                     force = []; end
@@ -64,13 +64,14 @@ if ismember('PC',dataType)
             disp(fList)
         case 2
             dbstack; error('amplitude and phase diff data? code that')
-        case 3
+        case {3 4}
             %%% summarize real
             disp('real')
-            % [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
-            %     = doIt(fList(:,2),'vencDiffReal',nDummyNotRemoved,dataType,force,verbose);
+            ind = contains(fList,'part-real');
+            if nnz(all(ind,1))~=1 || nnz(any(ind,1))~=1; dbstack; error('confused about the real part'); end
+            ind = all(ind,1);
             [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
-                = doIt(fList(:,2),[],nDummyNotRemoved,dataType,force,verbose);
+                = doIt(fList(:,ind),[],nDummyNotRemoved,dataType,force,verbose);
 
             smr.runAv.fList  = cat(2,smr.runAv.fList ,fMeanList);
             smr.runSd.fList  = cat(2,smr.runSd.fList ,fStdList);
@@ -94,10 +95,11 @@ if ismember('PC',dataType)
 
             %%% summarize imag
             disp('imag')
-            % [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
-            %     = doIt(fList(:,3),'vencDiffImag',nDummyNotRemoved,dataType,force,verbose);
+            ind = contains(fList,'part-imag');
+            if nnz(all(ind,1))~=1 || nnz(any(ind,1))~=1; dbstack; error('confused about the imag part'); end
+            ind = all(ind,1);
             [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
-                = doIt(fList(:,3),[],nDummyNotRemoved,dataType,force,verbose);
+                = doIt(fList(:,ind),[],nDummyNotRemoved,dataType,force,verbose);
 
             smr.runAv.fList  = cat(2,smr.runAv.fList ,fMeanList);
             smr.runSd.fList  = cat(2,smr.runSd.fList ,fStdList);
@@ -118,6 +120,45 @@ if ismember('PC',dataType)
             smr.sesSd.runSd.fList  = cat(2,smr.sesSd.runSd.fList ,std_cat_fSummaryList(:,:,2));
             smr.sesSd.runSnr.fList = cat(2,smr.sesSd.runSnr.fList,std_cat_fSummaryList(:,:,3));
             smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
+
+
+            %%% summarize phase difference and magnitude at venc0 by recombining real and imag
+            indR = all(contains(smr.runAv.fList,'part-real'),1);
+            indI = all(contains(smr.runAv.fList,'part-imag'),1);
+            siemensFlag = 1;
+            [fMag,fPhs] = cmplx2plr(smr.runAv.fList(:,indR),smr.runAv.fList(:,indI),force,siemensFlag);
+            smr.runAv.fList  = cat(2,smr.runAv.fList ,[fPhs fMag]);
+
+
+            %%% summarize magnitude of complex difference
+            if size(fList,2)==4
+                disp('magnitude of complex difference')
+                ind = contains(fList,'part-mag') & contains(fList,'rec-vencDiff');
+                if nnz(all(ind,1))~=1 || nnz(any(ind,1))~=1; dbstack; error('confused about the complex difference images'); end
+                ind = all(ind,1);
+                [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
+                    = doIt(fList(:,ind),[],nDummyNotRemoved,dataType,force,verbose);
+
+                smr.runAv.fList  = cat(2,smr.runAv.fList ,fMeanList);
+                smr.runSd.fList  = cat(2,smr.runSd.fList ,fStdList);
+                smr.runSnr.fList = cat(2,smr.runSnr.fList,fSnrList);
+                smr.runFML.fList = cat(2,smr.runFML.fList,fFstMdLst);
+
+                smr.sesCat.runAv.fList  = cat(2,smr.sesCat.runAv.fList ,cat_fSummaryList(:,:,1));
+                smr.sesCat.runSd.fList  = cat(2,smr.sesCat.runSd.fList ,cat_fSummaryList(:,:,2));
+                smr.sesCat.runSnr.fList = cat(2,smr.sesCat.runSnr.fList,cat_fSummaryList(:,:,3));
+                smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
+
+                smr.sesAv.runAv.fList  = cat(2,smr.sesAv.runAv.fList ,av_cat_fSummaryList(:,:,1));
+                smr.sesAv.runSd.fList  = cat(2,smr.sesAv.runSd.fList ,av_cat_fSummaryList(:,:,2));
+                smr.sesAv.runSnr.fList = cat(2,smr.sesAv.runSnr.fList,av_cat_fSummaryList(:,:,3));
+                smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
+
+                smr.sesSd.runAv.fList  = cat(2,smr.sesSd.runAv.fList ,std_cat_fSummaryList(:,:,1));
+                smr.sesSd.runSd.fList  = cat(2,smr.sesSd.runSd.fList ,std_cat_fSummaryList(:,:,2));
+                smr.sesSd.runSnr.fList = cat(2,smr.sesSd.runSnr.fList,std_cat_fSummaryList(:,:,3));
+                smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
+            end
         otherwise
             dbstack; error('more than one venc? code that')
     end
@@ -125,7 +166,7 @@ end
 
 
 function [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList] = doIt(fList,outTag,nDummyNotRemove,dataType,force,verbose)
-global srcAfni
+global src
 if ~isempty(outTag) && ~strcmp(outTag(end),'_'); outTag(end+1) = '_'; end
 
 %%%%%%%%%%%%%%%%
@@ -147,7 +188,7 @@ for f = 1:numel(fList)
     %     dbstack; error('not singleEcho volTs')
     % end
 
-    cmd = {srcAfni};
+    cmd = {src.afni};
     fIn = fList{f};
     nFrame = MRIget(fIn,'nv');
 
@@ -225,7 +266,7 @@ end
 %%%%%%%%%%%%%%%%%
 %% Between-run %%
 %%%%%%%%%%%%%%%%%
-cmd = {srcAfni};
+cmd = {src.afni};
 if nFrame>1
     fSummaryList = cat(3,fMeanList,fStdList,fSnrList,fFstMdLst);
 else

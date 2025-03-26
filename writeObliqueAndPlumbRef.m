@@ -1,12 +1,12 @@
 function runSet = writeObliqueAndPlumbRef(runSet,force,verbose)
-global srcAfni
+global src
 if ~exist('force','var'); force = []; end
 if ~exist('verbose','var'); verbose = []; end
 if isempty(force); force = 0; end
 if isempty(verbose); verbose = 0; end
 
 duporigin = 1;
-cmd = {srcAfni};
+cmd = {src.afni};
 
 %% Geom
 fIn = runSet.fGeom;
