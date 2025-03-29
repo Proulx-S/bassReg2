@@ -15,7 +15,7 @@ end
 % if size(nDummyNotRemove,2)~=size(fList,2)
 %     nDummyNotRemove = repmat(nDummyNotRemove,size(fList,2));
 % end
-
+disp('motion correction data')
 [fMeanList,fStdList,fSnrList,fFstMdLst,cat_fSummaryList,av_cat_fSummaryList,std_cat_fSummaryList]...
     = doIt(fList(:,1),[],nDummyNotRemoved,[],force,verbose);
 
@@ -25,37 +25,41 @@ smr.runSnr.fList = fSnrList;
 smr.runFML.fList = fFstMdLst;
 
 smr.sesCat.runAv.fList  = cat_fSummaryList(:,:,1);
-if size(cat_fSummaryList,3)==4
+if size(cat_fSummaryList,3)==3
     smr.sesCat.runSd.fList  = cat_fSummaryList(:,:,2);
     smr.sesCat.runSnr.fList = cat_fSummaryList(:,:,3);
-    smr.sesCat.runFML.fList = cat_fSummaryList(:,:,4);
+    % smr.sesCat.runFML.fList = cat_fSummaryList(:,:,4);
 else
     smr.sesCat.runSd.fList  = {};
     smr.sesCat.runSnr.fList = {};
-    smr.sesCat.runFML.fList = {};
+    % smr.sesCat.runFML.fList = {};
 end
+smr.sesCat.runFML.fList = {};
 
 smr.sesAv.runAv.fList  = av_cat_fSummaryList(:,:,1);
-if size(av_cat_fSummaryList,3)==4
+if size(av_cat_fSummaryList,3)==3
     smr.sesAv.runSd.fList  = av_cat_fSummaryList(:,:,2);
     smr.sesAv.runSnr.fList = av_cat_fSummaryList(:,:,3);
-    smr.sesAv.runFML.fList = av_cat_fSummaryList(:,:,4);
+    % smr.sesAv.runFML.fList = av_cat_fSummaryList(:,:,4);
 else
     smr.sesAv.runSd.fList  = {};
     smr.sesAv.runSnr.fList = {};
-    smr.sesAv.runFML.fList = {};
+    % smr.sesAv.runFML.fList = {};
 end
+smr.sesAv.runFML.fList = {};
 
 smr.sesSd.runAv.fList  = std_cat_fSummaryList(:,:,1);
-if size(std_cat_fSummaryList,3)==4
+if size(std_cat_fSummaryList,3)==3
     smr.sesSd.runSd.fList  = std_cat_fSummaryList(:,:,2);
     smr.sesSd.runSnr.fList = std_cat_fSummaryList(:,:,3);
-    smr.sesSd.runFML.fList = std_cat_fSummaryList(:,:,4);
+    % smr.sesSd.runFML.fList = std_cat_fSummaryList(:,:,4);
 else
     smr.sesSd.runSd.fList  = {};
     smr.sesSd.runSnr.fList = {};
-    smr.sesSd.runFML.fList = {};
+    % smr.sesSd.runFML.fList = {};
 end
+smr.sesSd.runFML.fList = {};
+
 
 if ismember('PC',dataType)
     switch size(fList,2)
@@ -81,17 +85,17 @@ if ismember('PC',dataType)
             smr.sesCat.runAv.fList  = cat(2,smr.sesCat.runAv.fList ,cat_fSummaryList(:,:,1));
             smr.sesCat.runSd.fList  = cat(2,smr.sesCat.runSd.fList ,cat_fSummaryList(:,:,2));
             smr.sesCat.runSnr.fList = cat(2,smr.sesCat.runSnr.fList,cat_fSummaryList(:,:,3));
-            smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
+            % smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
 
             smr.sesAv.runAv.fList  = cat(2,smr.sesAv.runAv.fList ,av_cat_fSummaryList(:,:,1));
             smr.sesAv.runSd.fList  = cat(2,smr.sesAv.runSd.fList ,av_cat_fSummaryList(:,:,2));
             smr.sesAv.runSnr.fList = cat(2,smr.sesAv.runSnr.fList,av_cat_fSummaryList(:,:,3));
-            smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
+            % smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,{''});
 
             smr.sesSd.runAv.fList  = cat(2,smr.sesSd.runAv.fList ,std_cat_fSummaryList(:,:,1));
             smr.sesSd.runSd.fList  = cat(2,smr.sesSd.runSd.fList ,std_cat_fSummaryList(:,:,2));
             smr.sesSd.runSnr.fList = cat(2,smr.sesSd.runSnr.fList,std_cat_fSummaryList(:,:,3));
-            smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
+            % smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,{''});
 
             %%% summarize imag
             disp('imag')
@@ -109,17 +113,17 @@ if ismember('PC',dataType)
             smr.sesCat.runAv.fList  = cat(2,smr.sesCat.runAv.fList ,cat_fSummaryList(:,:,1));
             smr.sesCat.runSd.fList  = cat(2,smr.sesCat.runSd.fList ,cat_fSummaryList(:,:,2));
             smr.sesCat.runSnr.fList = cat(2,smr.sesCat.runSnr.fList,cat_fSummaryList(:,:,3));
-            smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
+            % smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
 
             smr.sesAv.runAv.fList  = cat(2,smr.sesAv.runAv.fList ,av_cat_fSummaryList(:,:,1));
             smr.sesAv.runSd.fList  = cat(2,smr.sesAv.runSd.fList ,av_cat_fSummaryList(:,:,2));
             smr.sesAv.runSnr.fList = cat(2,smr.sesAv.runSnr.fList,av_cat_fSummaryList(:,:,3));
-            smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
+            % smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
 
             smr.sesSd.runAv.fList  = cat(2,smr.sesSd.runAv.fList ,std_cat_fSummaryList(:,:,1));
             smr.sesSd.runSd.fList  = cat(2,smr.sesSd.runSd.fList ,std_cat_fSummaryList(:,:,2));
             smr.sesSd.runSnr.fList = cat(2,smr.sesSd.runSnr.fList,std_cat_fSummaryList(:,:,3));
-            smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
+            % smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
 
 
             %%% summarize phase difference and magnitude at venc0 by recombining real and imag
@@ -147,17 +151,17 @@ if ismember('PC',dataType)
                 smr.sesCat.runAv.fList  = cat(2,smr.sesCat.runAv.fList ,cat_fSummaryList(:,:,1));
                 smr.sesCat.runSd.fList  = cat(2,smr.sesCat.runSd.fList ,cat_fSummaryList(:,:,2));
                 smr.sesCat.runSnr.fList = cat(2,smr.sesCat.runSnr.fList,cat_fSummaryList(:,:,3));
-                smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
+                % smr.sesCat.runFML.fList = cat(2,smr.sesCat.runFML.fList,cat_fSummaryList(:,:,4));
 
                 smr.sesAv.runAv.fList  = cat(2,smr.sesAv.runAv.fList ,av_cat_fSummaryList(:,:,1));
                 smr.sesAv.runSd.fList  = cat(2,smr.sesAv.runSd.fList ,av_cat_fSummaryList(:,:,2));
                 smr.sesAv.runSnr.fList = cat(2,smr.sesAv.runSnr.fList,av_cat_fSummaryList(:,:,3));
-                smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
+                % smr.sesAv.runFML.fList = cat(2,smr.sesAv.runFML.fList,av_cat_fSummaryList(:,:,4));
 
                 smr.sesSd.runAv.fList  = cat(2,smr.sesSd.runAv.fList ,std_cat_fSummaryList(:,:,1));
                 smr.sesSd.runSd.fList  = cat(2,smr.sesSd.runSd.fList ,std_cat_fSummaryList(:,:,2));
                 smr.sesSd.runSnr.fList = cat(2,smr.sesSd.runSnr.fList,std_cat_fSummaryList(:,:,3));
-                smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
+                % smr.sesSd.runFML.fList = cat(2,smr.sesSd.runFML.fList,std_cat_fSummaryList(:,:,4));
             end
         otherwise
             dbstack; error('more than one venc? code that')
@@ -192,7 +196,7 @@ for f = 1:numel(fList)
     fIn = fList{f};
     nFrame = MRIget(fIn,'nv');
 
-    %mean
+    %%% within-run averaging
     if nFrame>1
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' outTag fOut{end}]; fOut = strjoin(fOut,filesep);
         if force || ~exist(fOut,'file')
@@ -205,7 +209,7 @@ for f = 1:numel(fList)
     end
     fMeanList{f} = fOut;
 
-    %std
+    %%% within-run standard deviation
     if nFrame>1
         fOut = strsplit(fIn,filesep); fOut{end} = ['std_' outTag fOut{end}]; fOut = strjoin(fOut,filesep);
         if force || ~exist(fOut,'file')
@@ -218,7 +222,7 @@ for f = 1:numel(fList)
     end
     fStdList{f} = fOut;
 
-    %snr
+    %%% within-run
     if nFrame>1
         fOut = strsplit(fIn,filesep); fOut{end} = ['snr_' outTag fOut{end}]; fOut = strjoin(fOut,filesep);
         if force || ~exist(fOut,'file')
@@ -266,9 +270,8 @@ end
 %%%%%%%%%%%%%%%%%
 %% Between-run %%
 %%%%%%%%%%%%%%%%%
-cmd = {src.afni};
 if nFrame>1
-    fSummaryList = cat(3,fMeanList,fStdList,fSnrList,fFstMdLst);
+    fSummaryList = cat(3,fMeanList,fStdList,fSnrList);
 else
     fSummaryList = fMeanList;
 end
@@ -276,12 +279,13 @@ cat_fSummaryList     = cell([1 size(fSummaryList,[2 3])]);
 av_cat_fSummaryList  = cell([1 size(fSummaryList,[2 3])]);
 std_cat_fSummaryList = cell([1 size(fSummaryList,[2 3])]);
 for i = 1:prod(size(fSummaryList,[2 3]))
-    %%% runCat
+    cmd = {src.afni};
+
+    %%% cross-run catenation (of within-run summaries, i.e. mean, std or snr)
     fIn = fSummaryList(:,i);
     [a,b,~] = fileparts(replace(fIn{1},'.nii.gz',''));
     a = strsplit(a,'_'); a{contains(a,'run-')} = 'run-cat'; a = strjoin(a,'_');
     fOut = fullfile(a,[replace(b,'av_','') '.nii.gz']); if ~exist(fileparts(fOut),'dir'); mkdir(fileparts(fOut)); end
-    % fOut = fullfile(fileparts(a),['cat_' b '.nii.gz']);
     if force || ~exist(fOut,'file')
         cmd{end+1} = '3dTcat -overwrite \';
         cmd{end+1} = ['-prefix ' fOut ' \'];
@@ -290,8 +294,7 @@ for i = 1:prod(size(fSummaryList,[2 3]))
     cat_fSummaryList{1,i} = fOut;
     fCat = fOut;
     
-
-    %%% runAv
+    %%% cross-run averaging (of within-run summaries, i.e. mean, std or snr)
     fIn = fCat;
     if size(fSummaryList,1)>1
         fOut = strsplit(fIn,filesep); fOut{end} = ['av_' fOut{end}]; fOut = strjoin(fOut,filesep);
@@ -305,7 +308,7 @@ for i = 1:prod(size(fSummaryList,[2 3]))
     end
     av_cat_fSummaryList{1,i} = fOut;
 
-    %%% runStd
+    %%% cross-run standard deviation (of within-run summaries, i.e. mean, std or snr)
     fIn = fCat;
     if size(fSummaryList,1)>1
         fOut = strsplit(fIn,filesep); fOut{end} = ['std_' fOut{end}]; fOut = strjoin(fOut,filesep);
@@ -318,24 +321,24 @@ for i = 1:prod(size(fSummaryList,[2 3]))
         fOut = [];
     end
     std_cat_fSummaryList{1,i} = fOut;
-end
 
-%%% launch command
-if length(cmd)>1
-    if verbose
-        if any(ismember(dataType,'volTs'))
-            disp(' summarizing volTs across runs')
+    %%% launch command
+    if length(cmd)>1
+        if verbose
+            if any(ismember(dataType,'volTs'))
+                disp(' summarizing volTs across runs')
+            else
+                disp(' summarizing vol across runs')
+            end
+        end
+        if verbose>1
+            [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status || contains(cmdout,'error','IgnoreCase',true); dbstack; error(cmdout); error('x'); end
         else
-            disp(' summarizing vol across runs')
+            [status,cmdout] = system(strjoin(cmd,newline)); if status || contains(cmdout,'error','IgnoreCase',true); dbstack; error(cmdout); error('x'); end
         end
     end
-    if verbose>1
-        [status,cmdout] = system(strjoin(cmd,newline),'-echo'); if status || contains(cmdout,'error','IgnoreCase',true); dbstack; error(cmdout); error('x'); end
-    else
-        [status,cmdout] = system(strjoin(cmd,newline)); if status || contains(cmdout,'error','IgnoreCase',true); dbstack; error(cmdout); error('x'); end
-    end
-end
 
+end
 
 % %% Output
 % smr.runAv.fList  = fMeanList;

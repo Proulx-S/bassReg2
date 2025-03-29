@@ -193,7 +193,7 @@ elseif ismember({'PC'},dataType) && ismember({'singleEcho'},dataType)
     
     [fPhsDiffR,fPhsDiffI] = plr2cmplx(runSet.fPlumbList(mag0Ind),runSet.fPlumbList(phsDInd),forceThis);
     
-    % All these timeseries will be motion-corrected using the first for motion estimation
+    % All these timeseries will be motion-corrected using the first timeseries for motion estimation
     runSet.fPlumbList = cat(2,runSet.fPlumbList(mag0Ind),fPhsDiffR,fPhsDiffI,runSet.fPlumbList(cmplxDInd));
 else
     dbstack; error('code that')

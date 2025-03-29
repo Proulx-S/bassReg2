@@ -12,7 +12,7 @@ for r = 1:length(fMag0)
     fPhsDiffI{r} = replace(fPhsDiff{r},'part-phase','part-imag');
 
     if force || ~exist(fPhsDiffR{r},'file') || ~exist(fPhsDiffI{r},'file')
-        % Read vencOff signal magnitude (mag0) and vencOff-vencOn phase (phsDiff)
+        % Read vencOff signal magnitude (mag0) and vencOff phase - vencOn phase (phsDiff)
         mriMag0     = MRIread(fMag0{r}   );
         mriPhsDiff  = MRIread(fPhsDiff{r});
         mriPhsDiffR = rmfield(mriPhsDiff,'vol');
@@ -20,7 +20,7 @@ for r = 1:length(fMag0)
 
         % Slap mag0 to phsDiff and get real and imag
         [mriPhsDiffR.vol,mriPhsDiffI.vol] = pol2cart(mriPhsDiff.vol./4096.*pi,mriMag0.vol);
-
+        
         % Write real and imag
         mriPhsDiffR.fspec = fPhsDiffR{r}; if ~exist(fileparts(mriPhsDiffR.fspec),'dir'); mkdir(fileparts(mriPhsDiffR.fspec)); end
         mriPhsDiffI.fspec = fPhsDiffI{r}; if ~exist(fileparts(mriPhsDiffI.fspec),'dir'); mkdir(fileparts(mriPhsDiffI.fspec)); end
