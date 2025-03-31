@@ -476,7 +476,7 @@ if isempty(info.segmentInd)
     disp('when done press enter')
     commandwindow();
     [info.runTimes{end+1},~,button] = ginput;
-
+    
     info.runTimes{end} = info.runTimes{end}(button==1);
     info.runTimes{end} = info.runTimes{end}([end-1 end]);
     x = info.runTimes{end}([1 2 2 1 1]);
