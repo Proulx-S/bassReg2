@@ -1,0 +1,85 @@
+# Matlab autosave files
+**/*.asv
+**/*.m~
+
+# Compiled MEX binaries
+**/*.mex*
+
+# Packaged app and toolbox files
+**/*.mlappinstall
+**/*.mltbx
+
+# Generated helpsearch folders
+**/helpsearch*/
+
+# Simulink code generation folders
+**/slprj/
+**/sccprj/
+
+# Matlab code generation folders
+**/codegen/
+
+# Simulink autosave extension
+**/*.autosave
+
+# Simulink cache files
+**/*.slxc
+
+# Octave session info
+**/octave-workspace
+
+# Data files
+**/*.mat
+**/*.fig
+
+# Afni
+**/*.err
+**/*.BRIK
+**/*.HEAD
+**/*.nii
+**/*.nii.gz
+
+# Additional large files that can slow indexing
+**/*.zip
+**/*.tar
+**/*.tar.gz
+**/*.tgz
+**/*.rar
+**/*.7z
+
+# Binary files
+**/*.bin
+**/*.dat
+**/*.bin.*
+**/*.dat.*
+
+# Log files
+**/*.log
+**/*.out
+
+# Temp files
+**/tmp/
+**/temp/
+**/.tmp/
+**/.temp/
+
+# Build directories
+**/build/
+**/dist/
+**/out/
+
+# Large data directories
+**/data/
+**/raw_data/
+**/processed_data/
+**/results/
+
+# Cache directories
+**/.cache/ 
+
+# DICOM files
+**/*.dcm
+**/*.dicom
+**/*.ima
+**/*.dic
+**/MR.*

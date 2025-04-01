@@ -1,5 +1,5 @@
 function runSet = estimMotionBR(runSet,fBase,fMask,param,force,verbose)
-global srcAfni srcFs
+global src
 
 ppLabel = 'betweenRunMoco';
 
@@ -25,24 +25,28 @@ if isempty(verbose); verbose = 0; end
 if isempty(fBase)
     switch param.baseType
         case 'firstRun_avFrame'
-            [a,b,c] = fileparts(runSet.fMocoList);
-            fSourceList = fullfile(a,strcat('av_',cellstr(b),cellstr(c)));
+            fEstimList = runSet.fMocoSmr.runAv.fList;
             runSet = wr2br(runSet);
-            runSet.fEstimList = cellstr(fSourceList);
-            runSet.fBase = char(fSourceList(1)); clear fSourceList
+            runSet.fEstimList = fEstimList;
+            runSet.fBase = fEstimList(1); clear fEstimList
+            % [a,b,c] = fileparts(runSet.fMocoList);
+            % fSourceList = fullfile(a,strcat('av_',cellstr(b),cellstr(c)));
+            % runSet = wr2br(runSet);
+            % runSet.fEstimList = cellstr(fSourceList);
+            % runSet.fBase = char(fSourceList(1)); clear fSourceList
         otherwise
             dbstack; error('code that')
-        % case 'av'
-        %     [a,b,~] = fileparts(replace(runSet.fEstimList,'.nii.gz',''));
-        %     runSet.fEstimListBase = fullfile(a,strcat('av_',b,'.nii.gz'));
-        % case 'mcAv'
-        %     dbstack; error('code that')
-        %     paramBase = param;
-        %     paramBase.baseType = 'av';
-        %     runSet = estimMotionWR(runSet,paramBase,[],[],[]);
     end
 else
-    dbstack; error('code that');
+    switch param.baseType
+        case 'firstSes_firstRun_avFrame'
+            fEstimList = runSet.fMocoSmr.runAv.fList;
+            runSet = wr2br(runSet);
+            runSet.fEstimList = fEstimList;
+            runSet.fBase = fBase; clear fEstimList
+        otherwise
+            dbstack; error('code that')
+    end
 end
 
 
@@ -64,13 +68,12 @@ for I = 1:numel(runSet.fEstimList)
     % fOutPear  = replace(fOut,'.nii.gz','_pear.nii.gz');
     % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
     if force || ~exist(fOut,'file')
-        cmd = {srcAfni};
+        cmd = {src.afni};
         %%% moco
         cmd{end+1} = '3dAllineate -overwrite \';
-        cmd{end+1} = ['-base ' runSet.fBase ' \'];
-        cmd{end+1} = ['-source ' fIn ' \'];
-        cmd{end+1} = ['-prefix ' fOut ' \'];
-        % cmd{end+1} = ['-wtprefix ' fOut ' \'];
+        cmd{end+1} = ['-base ' char(runSet.fBase) ' \'];
+        cmd{end+1} = ['-source ' char(fIn) ' \'];
+        cmd{end+1} = ['-prefix ' char(fOut) ' \'];
         cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
         cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
         cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
