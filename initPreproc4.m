@@ -13,7 +13,7 @@ if ~exist('skipMask','var');        skipMask = []       ; end
 if ~isfield(runSet,'dataType'); dataType = {}     ; else; dataType = runSet.dataType; end
 if ~isfield(param,'verbose');  verbose = []       ; else; verbose = param.verbose; end
 if isempty(force);               force = 0        ; end
-if isempty(skipMask);         skipMask = 0        ; end
+if isempty(skipMask);         skipMask = 1        ; end
 if isempty(dataType);         dataType = {'volTs'}; elseif ischar(dataType); dataType = {dataType}; end
 if isempty(verbose);           verbose = 1        ; end
 

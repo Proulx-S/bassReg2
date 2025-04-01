@@ -1,5 +1,5 @@
 function runSet = estimMotionWR2(runSet,param,baseFileList,fMask,force,verbose)
-global srcAfni srcFs
+global src
 
 ppLabel = 'withinRunMoco';
 
@@ -70,7 +70,7 @@ for r = 1:nRun
     % fOutPear = strsplit(fIn,filesep); fOutPear{end} = ['mcWR_' fOutPear{end}]; fOutPear{end} = strsplit(fOutPear{end},'_'); fOutPear{end}{end} = 'pearCor.nii.gz'; fOutPear{end} = strjoin(fOutPear{end},'_'); fOutPear = strjoin(fOutPear,filesep);
     fOutParam = replace(fOut,'.nii.gz','');
     % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
-    cmd = {srcAfni};
+    cmd = {src.afni};
     %%% moco
     cmd{end+1} = '3dAllineate -overwrite \';
     cmd{end+1} = ['-base ' fBase ' \'];
