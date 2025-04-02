@@ -1,4 +1,4 @@
-function runSet = initPreproc3(runSet,geomRef,param,skipMask,force,verbose)
+function runSet = initPreproc4(runSet,geomRef,param,skipMask,force,verbose)
 global src
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end

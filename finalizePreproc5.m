@@ -1,5 +1,5 @@
 function finalPreprocFiles = finalizePreproc5(initFiles,preprocFiles,force,verbose)
-global srcAfni
+global src
 if ~exist('force','var');     force = []; end
 if ~exist('verbose','var'); verbose = []; end
 if isempty(force);            force = 0; end
@@ -33,7 +33,7 @@ end
 [finalPreprocFiles.fTransList{:,:,all(cellfun('isempty',finalPreprocFiles.fTransList),1)}] = deal('');
 [finalPreprocFiles.ppLabelList{:,:,all(cellfun('isempty',finalPreprocFiles.ppLabelList),1)}] = deal('');
 
-cmd = {srcAfni};
+cmd = {src.afni};
 for r = 1:size(finalPreprocFiles.fTransList,1)
     [~,b,~] = fileparts(fileparts(finalPreprocFiles.fTransList{r,1,1}));
     finalPreprocFiles.fTransCatList{r} = fullfile(bidsDerivDir,b);
