@@ -129,9 +129,8 @@ if ismember('PC',dataType)
             %%% summarize phase difference and magnitude at venc0 by recombining real and imag
             indR = all(contains(smr.runAv.fList,'part-real'),1);
             indI = all(contains(smr.runAv.fList,'part-imag'),1);
-            siemensFlag = 1;
-            [fMag,fPhs] = cmplx2plr(smr.runAv.fList(:,indR),smr.runAv.fList(:,indI),force,siemensFlag);
-            smr.runAv.fList  = cat(2,smr.runAv.fList ,[fPhs fMag]);
+            [fMag,fPhs] = cmplx2plr(smr.runAv.fList(:,indR),smr.runAv.fList(:,indI),force);
+            smr.runAv.fList  = cat(2,smr.runAv.fList,fPhs,fMag);
 
 
             %%% summarize magnitude of complex difference

@@ -52,11 +52,11 @@ fPreprocUpdated                = false(size(finalPreprocFiles.fPlumbList));
 if size(finalPreprocFiles.fTransCatList,2)==1
     finalPreprocFiles.fTransCatList = repmat(finalPreprocFiles.fTransCatList,[1 size(finalPreprocFiles.fPreprocList,2)]);
 end
-% finalPreprocFiles.fTransCatList = 
+
 for r = 1:numel(finalPreprocFiles.fPlumbList)
     fIn    = finalPreprocFiles.fPlumbList{r};
     fTrans = finalPreprocFiles.fTransCatList{r};
-    fOut   = fullfile(fileparts(finalPreprocFiles.fPlumbList{r}),'preproc_volTs.nii.gz');
+    fOut   = fullfile(fileparts(fIn),'preproc_volTs.nii.gz');
 
     if force || ~exist(fOut,'file')
         cmd{end+1} = '3dAllineate -overwrite -nocmass -final wsinc5 \';
@@ -102,13 +102,14 @@ for pp = 1:length(preprocFiles)
         end
     end
 end
-fGeom = {initFiles.fGeom fGeomWR fGeomBR fGeomBS};
-fGeom = fGeom(~cellfun('isempty',fGeom));
+fGeom = {initFiles.fGeom fGeomWR fGeomBR fGeomBS}; fGeom = fGeom(~cellfun('isempty',fGeom));
 finalPreprocFiles.fGeom = fGeom{end}; clear fGeom fGeomWR fGeomBR fGeomBS
 
 %%% Rewrite
 disp(' rewriting preproc data at setOblique')
-mriOblique = MRIread(finalPreprocFiles.fGeom);
+if any(fPreprocUpdated)
+    mriOblique = MRIread(finalPreprocFiles.fGeom,1);
+end
 for r = 1:numel(finalPreprocFiles.fPreprocList)
     disp(['file ' num2str(r) '/' num2str(numel(finalPreprocFiles.fPreprocList))])
     if fPreprocUpdated(r)

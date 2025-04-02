@@ -1,6 +1,6 @@
 function [fMag,fPhs] = cmplx2plr(fR,fI,force)
 % function [fMag,fPhs] = cmplx2plr(fR,fI,force,siemensFlag)
-        if ~exist('force','var');         force = []; end
+if ~exist('force','var');         force = []; end
 if isempty(force);                force = 0 ; end
 % if ~exist('siemensFlag','var'); siemensFlag = []; end
 % if isempty(siemensFlag);          siemensFlag = 0; end
@@ -14,6 +14,14 @@ for r = 1:length(fR)
 
     fPhs{r} = replace(fR{r},'part-real','part-phase');
     fMag{r} = replace(fR{r},'part-real','part-mag');
+    
+    % avoid overwriting
+    fMag{r} = strsplit(fMag{r},'_');
+    fMag{r}{contains(fMag{r},'rec-vencDiff')} = 'rec-venc0';
+    fMag{r} = strjoin(fMag{r},'_');
+    fMag{r} = strsplit(fMag{r},filesep);
+    fMag{r}{end} = ['cmplxIntrp_' fMag{r}{end}];
+    fMag{r} = strjoin(fMag{r},filesep);
 
     % if siemensFlag
     %     fMag{r} = strsplit(fMag{r},'_');
@@ -37,6 +45,16 @@ for r = 1:length(fR)
         if ~exist(fileparts(mriMag.fspec),'dir'); mkdir(fileparts(mriMag.fspec)); end
         MRIwrite(mriMag,mriMag.fspec);
         disp(' done')
+
+        % f = 20;
+        % figure('WindowStyle','docked');
+        % imagesc(mriMag.vol(:,:,f));
+        % ax = gca; ax.DataAspectRatio = [1 1 1]; ax.Colormap = gray; colorbar
+        % mriTmp = MRIread(mriMag.fspec);
+        % figure('WindowStyle','docked');
+        % imagesc(mriTmp.vol(:,:,f));
+        % ax = gca; ax.DataAspectRatio = [1 1 1]; ax.Colormap = gray; colorbar
+        
     else
         disp(' already done, skipping')
     end
