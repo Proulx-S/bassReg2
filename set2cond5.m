@@ -16,9 +16,10 @@ runCondTmpTmpTmp = [];
 for rs = 1:length(runSetTmp)
     if isempty(runSetTmp{rs}.fList); continue; end
 
+        
     ind = ismember({runCondTmp.sub}',runSetTmp{rs}.sub) & ...
         ismember({runCondTmp.ses}',runSetTmp{rs}.ses) & ...
-        ismember({runCondTmp.acq}',runSetTmp{rs}.label) & ...
+        ismember(strcat('acq-',{runCondTmp.acq}','_prsc-',{runCondTmp.prsc}'),runSetTmp{rs}.label) & ...
         ~cellfun('isempty',{runCondTmp.fList})'; 
 
     runCondTmpTmp = runCondTmp(ind);
@@ -28,11 +29,7 @@ for rs = 1:length(runSetTmp)
         runCondTmpTmp(rc).ppLabelList  = runSetTmp{rs}.finalFiles.ppLabelList;
         runCondTmpTmp(rc).dataType     = runSetTmp{rs}.finalFiles.dataType;
         
-        try
-            [~,condBids] = fileparts(replace(runCondTmpTmp(rc).fList(:,1),'.nii.gz',''));
-        catch
-            keyboard
-        end
+        [~,condBids] = fileparts(replace(runCondTmpTmp(rc).fList(:,1),'.nii.gz',''));
         [~,setBids] = fileparts(fileparts(runSetTmp{rs}.finalFiles.fPreprocList(:,1)));
         [a,b] = ismember(cellstr(setBids),cellstr(condBids));
 
@@ -64,11 +61,33 @@ for rs = 1:length(runSetTmp)
     runCondTmpTmpTmp = cat(1,runCondTmpTmpTmp,runCondTmpTmp);
 end
 
+%% Extract venc from filename (ideally from dcm)
+for rc = 1:length(runCondTmpTmpTmp)
+    venc1 = strsplit(runCondTmpTmpTmp(rc).fPreprocList{1},'_');
+    venc1 = venc1(contains(venc1,'acq-pcVenc'));
+    if isempty(venc1)
+        runCondTmpTmpTmp(rc).vencAcq = 'none';
+    else
+        venc2 = cell(1,size(runCondTmpTmpTmp(rc).fPreprocList,2));
+        for i = 1:size(runCondTmpTmpTmp(rc).fPreprocList,2)
+            venc = strsplit(runCondTmpTmpTmp(rc).fPreprocList{1,i},'_');
+            venc2(i) = venc(contains(venc,'rec-'));
+        end
+        venc1 = replace(venc1,'acq-','');
+        venc2 = replace(venc2,'rec-','');
+        runCondTmpTmpTmp(rc).vencAcq = char(venc1);
+        % runCondTmpTmpTmp(rc).vencRec = venc2;
+    end
+end
+
+
 
 %% Display summary
 [{runCondTmpTmpTmp.sub}
     {runCondTmpTmpTmp.ses}
     {runCondTmpTmpTmp.acq}
+    {runCondTmpTmpTmp.prsc}
+    {runCondTmpTmpTmp.vencAcq}
     {runCondTmpTmpTmp.task}
     cellstr(num2str(cellfun('size',{runCondTmpTmpTmp.fList},1)'))']';
 
@@ -79,6 +98,8 @@ tmp = ...
     [{runCondTmpTmpTmp.sub}
     {runCondTmpTmpTmp.ses}
     {runCondTmpTmpTmp.acq}
+    {runCondTmpTmpTmp.prsc}
+    {runCondTmpTmpTmp.vencAcq}
     {runCondTmpTmpTmp.task}
     cellstr(num2str(cellfun('size',{runCondTmpTmpTmp.fList},1)'))']';
 % cellstr(num2str(~cellfun('isempty',{runCondTmpTmpTmp.physSes})'))']';
@@ -87,11 +108,15 @@ tmp = ...
     [{runCondTmpTmpTmp.sub}
     {runCondTmpTmpTmp.ses}
     {runCondTmpTmpTmp.acq}
+    {runCondTmpTmpTmp.prsc}
+    {runCondTmpTmpTmp.vencAcq}
     {runCondTmpTmpTmp.task}
     cellstr(num2str(cellfun('size',{runCondTmpTmpTmp.fList},1)'))']';
 % nPhysRuns']';
 
-disp(table(tmp(~ismember(tmp(:,5),'0'),1),tmp(~ismember(tmp(:,5),'0'),2),tmp(~ismember(tmp(:,5),'0'),3),tmp(~ismember(tmp(:,5),'0'),4),tmp(~ismember(tmp(:,5),'0'),5),'VariableNames',{'sub' 'ses' 'mriCond' 'stimCond' 'mriRuns'}))
+tmp(cellfun('isempty',tmp)) = {'-'};
+
+disp(table(char(tmp(~ismember(tmp(:,7),'0'),1)),char(tmp(~ismember(tmp(:,7),'0'),2)),char(tmp(~ismember(tmp(:,7),'0'),3)),char(tmp(~ismember(tmp(:,7),'0'),4)),char(tmp(~ismember(tmp(:,7),'0'),5)),char(tmp(~ismember(tmp(:,7),'0'),6)),char(tmp(~ismember(tmp(:,7),'0'),7)),'VariableNames',{'sub' 'ses' 'mriCond' 'prsc' 'vencAcq' 'stimCond' 'mriRuns'}))
 % disp(...
 %     [{'sub' 'ses' 'mriCond' 'stimCond' 'mriRuns'}
 %     tmp(~ismember(tmp(:,5),'0'),:)]...
@@ -105,7 +130,7 @@ disp(table(tmp(~ismember(tmp(:,5),'0'),1),tmp(~ismember(tmp(:,5),'0'),2),tmp(~is
 
 
 
-%%  
+%% 
 
 subList = unique({runCondTmpTmpTmp.sub})';
 rCond = cell(size(subList));
@@ -115,13 +140,29 @@ for S = 1:length(subList)
     ind = ismember({runCondTmpTmpTmp.sub},subList{S});
     tmp = runCondTmpTmpTmp(ind);
 
-    % [{tmp.sub}' {tmp.ses}' {tmp.labelAcq}' {tmp.label}' cellstr(num2str(cellfun('size',{tmp.fList},1)'))]
+    % if any(~ismember({tmp.vencAcq},'none'))
+    %     keyboard
+    % end
 
-    runCondAcqList = unique({tmp.acq});
+    
+
+    % [{tmp.sub}' {tmp.ses}' {tmp.labelAcq}' {tmp.label}' cellstr(num2str(cellfun('size',{tmp.fList},1)'))]
+    acqAll     = {tmp.acq};
+    prscAll    = {tmp.prsc};
+    vencAcqAll = {tmp.vencAcq};
+    runCondAcqListAll = strcat(...
+    strcat('acq-'    ,acqAll)'    ,'_',...
+    strcat('prsc-'   ,prscAll)'   ,'_',...
+    strcat('vencAcq-',vencAcqAll)');
+    [runCondAcqList,b] = unique(runCondAcqListAll);
+    acq     = acqAll(b);
+    prsc    = prscAll(b);
+    vencAcq = vencAcqAll(b);
+    
     for ac = 1:length(runCondAcqList)
         % if ac~=2; continue; end
         % sort acquisition conditions
-        ind = ismember({tmp.acq},runCondAcqList(ac));
+        ind = ismember(runCondAcqListAll,runCondAcqList(ac));
         tmp2 = tmp(ind);
         [runCondStimList,~,runCondStimInd] = unique({tmp2.task});
 
@@ -205,7 +246,22 @@ for S = 1:length(subList)
             
 
             %% Compile
-            rCond{S}.(runCondAcqList{ac}).(['task_' runCondStimList{rsc}]) = tmp4;
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %SPECIAL CASE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            if strcmp(vencAcq(ac),'pcVenc7z')
+                vencAcq{ac} = 'pcVenc7ap';
+            end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %SPECIAL CASE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+            acqCond = strjoin(...
+                [acq(ac)
+                 prsc(ac)
+                 vencAcq(ac)],'_');
+            rCond{S}.(acqCond).(['task_' runCondStimList{rsc}]) = tmp4;
+            % rCond{S}.(runCondAcqList{ac}).(['task_' runCondStimList{rsc}]) = tmp4;
         end
         % rCond{S}.(runCondAcqList{ac}).prcSmr = tmp3.QA;
     end
@@ -303,6 +359,8 @@ end
 subList2      = {};
 sesList2      = {};
 acqCondList2  = {};
+prscCondList2 = {};
+vencCondList2 = {};
 stimCondList2 = {};
 n             = {};
 nPhys         = {};
@@ -318,6 +376,8 @@ for S = 1:length(rCond)
             subList2{end+1}      = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).sub;
             sesList2{end+1}      = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).ses';
             acqCondList2{end+1}  = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).acq;
+            prscCondList2{end+1} = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).prsc;
+            vencCondList2{end+1} = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).vencAcq;
             stimCondList2{end+1} = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).task;
             n{end+1}             = size(rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).fPreprocList,1);
             acqTime{end+1}       = rCond{S}.(runCondAcqList{ac}).(runCondStimList{rsc}).acqTime;
@@ -334,6 +394,8 @@ end
 
 [~,b] = sort(acqCondList2);
 acqCondList2 = acqCondList2(b);
+prscCondList2 = prscCondList2(b);
+vencCondList2 = vencCondList2(b);
 subList2 = subList2(b);
 sesList2 = sesList2(b);
 stimCondList2 = stimCondList2(b);
@@ -342,20 +404,35 @@ nPhys = nPhys(b);
 
 [~,b] = sort(subList2);
 acqCondList2 = acqCondList2(b);
+prscCondList2 = prscCondList2(b);
+vencCondList2 = vencCondList2(b);
 subList2 = subList2(b);
 sesList2 = sesList2(b);
 stimCondList2 = stimCondList2(b);
 n = n(b);
 nPhys = nPhys(b);
 
-disp([{'mriCond' 'sub' 'mriSes' 'stimCond' 'nRun' 'physSes'}
-      {'-------' '---' '------' '--------' '----' '-------'}
+disp([{'mriCond' 'sub' 'mriSes' 'prsc' 'venc' 'stimCond' 'nRun' 'physSes'}
+      {'-------' '---' '------' '----' '----' '--------' '----' '-------'}
 [acqCondList2
 subList2
 sesList2
+prscCondList2
+vencCondList2
 stimCondList2
 n
 nPhys]'])
 
 runCondStimList = strcat('task_',unique(stimCondList2)');
-runCondAcqList  = unique(acqCondList2)';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%SPECIAL CASE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+vencCondList2(ismember(vencCondList2,'pcVenc7z')) = {'pcVenc7ap'};
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%SPECIAL CASE%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+runCondAcqList  = unique(strcat(acqCondList2','_',prscCondList2','_',vencCondList2'));
+% runCondPrscList = unique(prscCondList2)';
+% runCondVencList = unique(vencCondList2)';
