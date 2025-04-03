@@ -25,7 +25,9 @@ for bs = 1:length(bidsSubDir)
     end
 end
 dirsOrig.bids = fullfile(sesDb,'bids');
+dirsOrig.bidsDeriv = fullfile(sesDb,'bids','derivatives');
 dirs.bids     = fullfile(info.prcDir,'bids',['sub-' sub],['ses-' ses]);
+dirs.bidsDeriv     = fullfile(info.prcDir,'bids','derivatives',['sub-' sub],['ses-' ses]);
 
 renameBids(dirs.bids,sub,ses);
 

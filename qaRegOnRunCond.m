@@ -1,5 +1,5 @@
 function [cmd,fig,smr] = qaRegOnRunCond(rCond,force)
-global srcFs srcAfni
+% global src
 if ~exist('force','var');       force = []    ; end
 if isempty(force);              force = 0     ; end
 

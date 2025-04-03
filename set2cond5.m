@@ -1,5 +1,4 @@
 function [rCond,subList,runCondAcqList,runCondStimList] = set2cond5(runSet,rCond,sesPhys,volAnat)
-force = 0;
 if ~exist('sesPhys','var'); sesPhys = []; end
 if ~exist('volAnat','var'); volAnat = []; end
 
