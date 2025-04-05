@@ -8,7 +8,7 @@ funcFileAcqLabel = {'vfMRI' 'vfMRIpc' 'bold'};
 %% Initiate info
 info = doIt; if nargin==0; return; end
 info.dbFile =  physFileDb;
-info.outFile = fullfile(physOutDir,'minCurated.mat');
+info.outFile = fullfile(physOutDir,'manual','minCurated.mat');
 
 % If output file exists, load and exit
 if exist(info.outFile,'file') && ~force
@@ -38,7 +38,22 @@ if force>1 || ~exist(fManId,'file')
     info = manId(info,physFileDb);
     save(fManId,'info')
 else
-    load(fManId,'info')
+    infoX = load(fManId,'info');
+    % detect if path has changed and adjust accordingly
+    if ~strcmp(info.dbFile,infoX.info.dbFile)
+        info.dbFile       = strsplit(info.dbFile,filesep)
+        infoX.info.dbFile = strsplit(infoX.info.dbFile,filesep)
+        [a,b] = ismember(info.dbFile(end-2:end),infoX.info.dbFile(end-2:end));
+        if ~all([a b==[1 2 3]]); dbstack; error('SOMETHING FISHY WITH PHYS DATA'); end
+        oldPath = strjoin(infoX.info.dbFile(1:end-3),filesep);
+        newPath = strjoin(info.dbFile(1:end-3),filesep);
+        info = infoX.info; clear infoX;
+        info.dbFile = replace(strjoin(info.dbFile,filesep),oldPath,newPath);
+        info.outFile = replace(info.outFile,oldPath,newPath);
+        info.runManId = replace(info.runManId,oldPath,newPath);
+        info.chanManId = replace(info.chanManId,oldPath,newPath);
+        save(fManId,'info')
+    end
 end
 
 
