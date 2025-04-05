@@ -1,8 +1,10 @@
-# Matlab autosave files
+# Windows default autosave extension
 **/*.asv
+
+# OSX / *nix default autosave extension
 **/*.m~
 
-# Compiled MEX binaries
+# Compiled MEX binaries (all platforms)
 **/*.mex*
 
 # Packaged app and toolbox files
@@ -11,13 +13,17 @@
 
 # Generated helpsearch folders
 **/helpsearch*/
+helpsearch*/
 
 # Simulink code generation folders
 **/slprj/
 **/sccprj/
+slprj/
+sccprj/
 
 # Matlab code generation folders
 **/codegen/
+codegen/
 
 # Simulink autosave extension
 **/*.autosave
@@ -27,6 +33,7 @@
 
 # Octave session info
 **/octave-workspace
+octave-workspace
 
 # Data files
 **/*.mat
@@ -36,8 +43,12 @@
 **/*.err
 **/*.BRIK
 **/*.HEAD
+
+# Nifti files
 **/*.nii
 **/*.nii.gz
+**/*.json
+**/*.jsn
 
 # Additional large files that can slow indexing
 **/*.zip
@@ -83,3 +94,23 @@
 **/*.ima
 **/*.dic
 **/MR.*
+
+# JASON
+**/*.json
+**/*.json.gz
+**/*.json.bz2
+**/*.json.zip
+**/*.json.tar
+**/*.json.tar.gz
+
+# image files
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.bmp
+**/*.tiff
+
+# Cursor
+*.cursorignore
+*.code-workspace
