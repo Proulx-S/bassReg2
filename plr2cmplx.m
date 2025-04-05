@@ -7,7 +7,7 @@ fPhsDiffI = cell(size(fPhsDiff));
 for r = 1:length(fMag0)
     disp([num2str(r) '/' num2str(length(fMag0))])
 
-    %% Just slap vencOff signal magnitude to the venc-induced phase shift
+    %% Just slap vencOff magnitude signal to the phase difference signal -- the goal is to avoid injecting phase noise from low signal voxels into adjacent high signal voxels during spatial interpolation
     fPhsDiffR{r} = replace(fPhsDiff{r},'part-phase','part-real');
     fPhsDiffI{r} = replace(fPhsDiff{r},'part-phase','part-imag');
 
