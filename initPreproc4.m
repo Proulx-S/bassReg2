@@ -101,11 +101,11 @@ if isempty(geomRef)
         fRef = fOrigList{1};
     end
 else
-    if ~ischar(geomRef)
-        fRef = fOrigList{geomRef};
-    else
-        fRef = geomRef;
-    end
+    % if ~ischar(geomRef)
+    %     fRef = fOrigList{geomRef};
+    % else
+        fRef = char(geomRef);
+    % end
 end
 runSet.fGeom = fRef;
 %% %%%%%%%%%%%%%%
