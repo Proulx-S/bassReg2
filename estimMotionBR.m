@@ -134,8 +134,10 @@ for I = 1:numel(runSet.fEstimList)
     end
 
     %%% output files
-    runSet.fMocoList{I} = fOut;
-    runSet.fMask{I}     = fMask;
+    runSet.fMocoList{I}      = fOut;
+    runSet.fMocoParamList{I} = [fOutParam '.param.1D'];
+    runSet.fMocoMatList{I}   = [fOutParam '.aff12.1D'];
+    runSet.fMask{I}          = fMask;
 
 
     
@@ -152,7 +154,15 @@ runSet.fMocoSmr = summarizeVolTs4(runSet.fMocoList,0,runSet.dataType,forceThis,v
 runSet.param   = param;
 runSet.ppLabel = ppLabel;
 
+
+
+
 return
+
+
+
+
+
 
 %%% write means
 cmd = {srcFs};
