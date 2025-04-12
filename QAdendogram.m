@@ -20,6 +20,7 @@ function [kI,k,hFig,fClust] = QAdendogram(fig)
         disp('Adjust frame clustering:')
         disp('up/dowm arrows to increase/decrease k number of clusters')
         disp('m to enter k value')
+        disp('f to identify a file')
         disp('d when done')
 
         hFigTmp = open(char(fig));
@@ -76,6 +77,8 @@ function [kI,k,hFig,fClust] = QAdendogram(fig)
             pause(0.1);
         end
 
+
+
         % Get final k value
         k  = hFig.UserData.k;
         kI = hFig.UserData.kI;
@@ -85,10 +88,10 @@ function [kI,k,hFig,fClust] = QAdendogram(fig)
         [~, b] = sort(histcounts(kI, 1:max(kI)+1), 'descend');
         newLabels = 1:length(kIu);
         newLabels = newLabels(b);
-        kI = newLabels(kI)
+        kI = newLabels(kI);
         
         % Output to file
-        fClust = cell(size(hFig.UserData.fileNames));;
+        fClust = cell(size(hFig.UserData.fileNames));
         for r = 1:length(hFig.UserData.fileNames)
             fClust{r} = replace(hFig.UserData.fileNames{r},'_volTs.nii.gz','_volTsClstIdx.1D');
             writematrix(kI(hFig.UserData.fileInd==r), fClust{r},'FileType','text');
@@ -97,41 +100,91 @@ function [kI,k,hFig,fClust] = QAdendogram(fig)
         disp('--------------------------------')
 
 
+        fClust = spikiness(hFig,kI)
+    end
 
 
 
 
 
-        %%% Estimate spikiness
-        cmd = {src.afni};
-        for r = 1:length(hFig.UserData.fileNames)
+
+        function fClust = spikiness(hFig,kI)
+            force = 1;
+            if ~exist('kI','var'); kI = []; end
+            if isempty( kI);       kI = ones(size(squeeze(hFig.UserData.frameNumber)))'; end
+            %%% Get spikiness
+            global src
+            %%% Estimate spikiness
+            cmd = {src.afni};
+            frames = {};
+            framesStr = {};
+            fSpkns = {};
+            fOutMeanStd = {};
+            fOutMedian  = {};
+            fOutMax     = {};
+            for r = 1:length(hFig.UserData.fileNames)
+                frames{end+1} = find(kI(hFig.UserData.fileInd==r)==1);
+                framesStr{end+1} = ['[' strjoin(arrayfun(@num2str, frames{end}-1, 'UniformOutput', false), ',') ']'];
+                
+                fIn  = [hFig.UserData.fileNames{r} framesStr{end}];
+                fSpkns{end+1} = replace(hFig.UserData.fileNames{r},'_volTs.nii.gz','_volTsSpkns.nii.gz');
+                if force || ~exist(fSpkns{end},'file')
+                    cmd{end+1} = ['3dDespike -overwrite -NEW \'];
+                    cmd{end+1} = ['-ssave ' fSpkns{end} ' \']
+                    cmd{end+1} = fIn;
+                end
+
+                fOutMeanStd{end+1} = replace(fSpkns{end},'_volTsSpkns.nii.gz','_volTsSpknsSpatialMean+Std.1D');
+                fOutMedian{end+1}  = replace(fSpkns{end},'_volTsSpkns.nii.gz','_volTsSpknsSpatialMedian.1D'  );
+                fOutMax{end+1}     = replace(fSpkns{end},'_volTsSpkns.nii.gz','_volTsSpknsSpatialMax.1D'     );
+                if force || ~exist(fOutMeanStd{end},'file')
+                    cmd{end+1} = ['3dmaskave -q -sigma  ' fSpkns{end} ' > ' fOutMeanStd{end}];
+                end
+                if force || ~exist(fOutMedian{end},'file')
+                    cmd{end+1} = ['3dmaskave -q -median ' fSpkns{end} ' > ' fOutMedian{end} ];
+                end
+                if force || ~exist(fOutMax{end},'file')  % Corrected line
+                    cmd{end+1} = ['3dmaskave -q -max    ' fSpkns{end} ' > ' fOutMax{end}    ];
+                end
+            end
+            if length(cmd)>1
+                [status,cmdout] = system(strjoin(cmd,newline),'-echo');
+            end
+    
+            meanStd = cell(size(hFig.UserData.fileNames))';
+            median  = cell(size(hFig.UserData.fileNames))';
+            max     = cell(size(hFig.UserData.fileNames))';
+            nFrames = 0;
+            for r = 1:length(hFig.UserData.fileNames)
+                frames{r} = frames{r} + nFrames;
+                meanStd{r} = readmatrix(fOutMeanStd{r},'FileType','text')';
+                median{r}  = readmatrix(fOutMedian{r},'FileType','text')';
+                max{r}     = readmatrix(fOutMax{r},'FileType','text')';
+                nFrames = nFrames + nnz(hFig.UserData.fileInd==r);
+            end
+            frames  = cat(2,frames{:});
+            meanStd = cat(2,meanStd{:});
+            median  = cat(2,median{:});
+            max     = cat(2,max{:});
+
             
-            frames = ['[' strjoin(arrayfun(@num2str, find(kI(hFig.UserData.fileInd==r)==1)-1, 'UniformOutput', false), ',') ']'];
-
-            % fIn  = [       hFig.UserData.fileNames{r} frames];
-            fIn  = [       hFig.UserData.fileNames{r}];
-            fOut = replace(hFig.UserData.fileNames{r},'_volTs.nii.gz','_volTsSpkns.nii.gz');
-            cmd{end+1} = ['3dDespike -overwrite -NEW \'];
-            cmd{end+1} = ['-ssave ' fOut ' \']
-            cmd{end+1} = fIn;
-
-            fIn = fOut;
-            cmd{end+1} = ['3dmaskave -q -sigma  ' fIn ' > ' replace(fIn,'_volTsSpkns.nii.gz','_volTsSpknsSpatialMean+Std.1D')];
-            cmd{end+1} = ['3dmaskave -q -median ' fIn ' > ' replace(fIn,'_volTsSpkns.nii.gz','_volTsSpknsSpatialMedian.1D'  )];
-            cmd{end+1} = ['3dmaskave -q -max    ' fIn ' > ' replace(fIn,'_volTsSpkns.nii.gz','_volTsSpknsSpatialMax.1D'     )];
+            axSpkn = axes(hFig,'Position',[sum(hFig.Children(1).Position([1 3])) hFig.Children(1).Position(2) 1-sum(hFig.Children(1).Position([1 3])) hFig.Children(1).Position(4)]);
+            % plot(cat(1,meanStd,median,max),frames)
+            plot(cat(1,meanStd),frames)
+            ylim([1 nFrames])
+            axSpkn.YDir = 'reverse';
+            % title(legend({'mean','std','median','max'},'Location','best'),'spikiness')
+            title(legend({'mean','std'},'Location','best'),'spikiness')
+            linkaxes(findobj(hFig.Children,'Type','Axes'),'y'); 
         end
-        [status,cmdout] = system(strjoin(cmd,newline),'-echo');
-        hFig.UserData.fileNames{r}
-        fIn
-        replace(fIn,'_volTsSpkns.nii.gz','_volTsSpknsSpatialMean+Std.1D')
-
-
-        tmp = readmatrix(replace(fIn,'_volTsSpkns.nii.gz','_volTsSpknsSpatialMean+Std.1D'),'FileType','text');
-
-        ['3dmaskave -q ' replace(hFig.UserData.fileNames{r},'_volTs.nii.gz','_volTsSpkns.nii.gz') ' | 1dplot -stdin -nopush']
 
         
-        end
+
+
+
+
+
+
 
         function keypress_callback(src,event,ax1,ax2,Z,rho)
             k = src.UserData.k;
@@ -146,6 +199,11 @@ function [kI,k,hFig,fClust] = QAdendogram(fig)
                     if ~isempty(k_str)
                         k = max(1,round(str2double(k_str{1})));
                     end
+                case 'f' % identify file
+                    disp('Select the run you want to inspect')
+                    [a,b] = ginput(1);
+                    disp(src.UserData.fileNames{src.UserData.fileInd(round(a))})
+                    disp(src.UserData.fileNames{src.UserData.fileInd(round(b))})
                 case 'd' % Done
                     src.UserData.done = true;
                     return;
