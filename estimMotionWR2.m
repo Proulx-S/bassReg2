@@ -28,11 +28,15 @@ if isempty(baseFileList)
     switch param.baseType
         case 'first'
             runSet.fEstimListBase = cell(size(runSet.fEstimList));
+            baseInd = repmat({num2str(0)},size(runSet.fEstimList));
             for r = 1:nRun
                 runSet.fEstimListBase{r} = runSet.fEstimList{r};
                 runSet.fEstimListBase{r}(strfind(runSet.fEstimListBase{r},'['):strfind(runSet.fEstimListBase{r},']')) = [];
+                if isfield(param, 'baseInd') && ~isempty(param.baseInd)
+                    baseInd{r} = num2str(param.baseInd(r));
+                end
             end
-            runSet.fEstimListBase = strcat(runSet.fEstimListBase,'[0]');
+            runSet.fEstimListBase = strcat(runSet.fEstimListBase,'[',baseInd,']');
         case 'av'
             runSet.fEstimListBase = cell(size(runSet.fEstimList));
             for r = 1:nRun
@@ -76,7 +80,7 @@ for r = 1:nRun
     cmd{end+1} = ['-base ' fBase ' \'];
     cmd{end+1} = ['-source ' fIn ' \'];
     cmd{end+1} = ['-prefix ' fOut ' \'];
-    cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
+    % cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
     cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
     cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
     % cmd{end+1} = ['-SavePear ' fOutParam '_pear.nii.gz \'];
@@ -124,31 +128,31 @@ for r = 1:nRun
         end
 
 
-        runSet.fOrigList{r};
-        [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(fIn, replace(fMask,'Inv.nii.gz','.nii.gz'),runSet.fOrigList{r}, force);
-        [fVesselMask,fNonVesselMask] = computeVesselness(fVolCorr,replace(fMask,'Inv.nii.gz','.nii.gz'),force,1);
+        % runSet.fOrigList{r};
+        % [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(fIn, replace(fMask,'Inv.nii.gz','.nii.gz'),runSet.fOrigList{r}, force);
+        % [fVesselMask,fNonVesselMask] = computeVesselness(fVolCorr,replace(fMask,'Inv.nii.gz','.nii.gz'),force,1);
 
-        % filepath: estimMotionWR2.m
-        cmd = {src.afni};
-        % First dilate the vessel mask
-        cmd{end+1} = '3dmask_tool -overwrite \';
-        cmd{end+1} = '-dilate_input 5 \';
-        cmd{end+1} = ['-input '  fVesselMask ' \'];
-        cmd{end+1} = ['-prefix ' fVesselMask];
-        cmd{end+1} = '3dcalc -overwrite \';
-        cmd{end+1} = ['-a ' fVesselMask ' \'];
-        cmd{end+1} = '-expr "not(a)" \'; 
-        cmd{end+1} = ['-prefix ' fVesselMask];
-        [status, cmdout] = system(strjoin(cmd,newline));
+        % % filepath: estimMotionWR2.m
+        % cmd = {src.afni};
+        % % First dilate the vessel mask
+        % cmd{end+1} = '3dmask_tool -overwrite \';
+        % cmd{end+1} = '-dilate_input 5 \';
+        % cmd{end+1} = ['-input '  fVesselMask ' \'];
+        % cmd{end+1} = ['-prefix ' fVesselMask];
+        % cmd{end+1} = '3dcalc -overwrite \';
+        % cmd{end+1} = ['-a ' fVesselMask ' \'];
+        % cmd{end+1} = '-expr "not(a)" \'; 
+        % cmd{end+1} = ['-prefix ' fVesselMask];
+        % [status, cmdout] = system(strjoin(cmd,newline));
         
 
-        % Blur fIn by 5mm using 3dmerge
-        cmd = {src.afni};
-        cmd{end+1} = '3dmerge -overwrite \';
-        cmd{end+1} = '-1blur_fwhm 8 -doall \';
-        cmd{end+1} = ['-prefix ' replace(fIn,'.nii.gz','_blur.nii.gz') ' \'];
-        cmd{end+1} = fIn;
-        [status, cmdout] = system(strjoin(cmd,newline));
+        % % Blur fIn by 5mm using 3dmerge
+        % cmd = {src.afni};
+        % cmd{end+1} = '3dmerge -overwrite \';
+        % cmd{end+1} = '-1blur_fwhm 1.6 -doall \';
+        % cmd{end+1} = ['-prefix ' replace(fIn,'.nii.gz','_blur.nii.gz') ' \'];
+        % cmd{end+1} = fIn;
+        % [status, cmdout] = system(strjoin(cmd,newline));
 
         % %%% adjust motion estimates for smoothing effects
         % editMocoParam([fOutParam '.param.1D'],sm)
