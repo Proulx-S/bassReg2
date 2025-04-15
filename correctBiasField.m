@@ -1,9 +1,12 @@
-function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, force)
+function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fOblique, force)
     global src;
-    if ~exist('fMask','var'); fMask = []; end
-    if ~exist('force','var'); force = []; end
-    if isempty(force);        force = 0 ; end
+    if ~exist('fMask','var');       fMask = []; end
+    if ~exist('fOblique','var'); fOblique = []; end
+    if ~exist('force','var');       force = []; end
+    if isempty(force);              force = 0 ; end
 
+
+        
     if iscell(f)
         fVolCorr   = cell(size(f));
         fVolTsCorr = cell(size(f));
@@ -30,6 +33,25 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, force
         end
     end
 
+    %% Detect header issue
+    cmd = {src.ants};
+    cmd{end+1} = ['PrintHeader' fVol];
+    [status,cmdout] = system(strjoin(cmd,newline));
+    if status % Fixed the syntax error
+        if isempty(fOblique)
+            dbstack; error('Header issue with ANTs. Please provide an original file (not deoblique) as f or fOblique'); % Added error handling
+        else
+            disp('header issue, using fOblique header')
+            mri = MRIread(fOblique,1);
+            mriTmp = MRIread(fVol);
+            mri.vol = mriTmp.vol; clear mriTmp;
+            fVolOblique = [tempname '.nii.gz'];
+            MRIwrite(mri,fVolOblique);
+        end
+    else
+        fVolOblique = [];
+    end
+
 
     %% N4 correction
     cmd = {src.afni};
@@ -47,7 +69,11 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, force
             cmd{end+1} = ['cp ' fVol ' ' fVolCorr];
         else
             cmd{end+1} = '3dcalc -overwrite \';
-            cmd{end+1} = ['-a ' fVol ' \'];
+            if ~isempty(fVolOblique)
+                cmd{end+1} = ['-a ' fVolOblique ' \'];
+            else
+                cmd{end+1} = ['-a ' fVol ' \'];
+            end
             cmd{end+1} = ['-b ' fMask ' \'];
             cmd{end+1} = ['-expr ''a*b'' \'];
             cmd{end+1} = ['-prefix ' fVolCorr];
@@ -57,6 +83,10 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, force
         cmd{end+1} = ['N4BiasFieldCorrection -d 2 \'];
         cmd{end+1} = ['-i ' fVolCorr ' \'];
         cmd{end+1} = ['-o [' fVolCorr ',' fVolField ']'];
+
+        % if ~isempty(fVolOrig)
+        %     fVol = fVolOrig; clear fVolOrig;
+        % end
 
         % manually apply field correction
         cmd{end+1} = '3dcalc -overwrite \';
