@@ -38,7 +38,7 @@ for r = 1:length(fR)
         mriMag = rmfield(mriR,'vol'); mriMag.fspec = fMag{r};
 
         [mriPhs.vol,mriMag.vol] = cart2pol(mriR.vol,mriI.vol);
-        mriPhs.vol = mriPhs.vol/pi*4096;
+        mriPhs.vol = mriPhs.vol./pi.*4096;
 
         if ~exist(fileparts(mriPhs.fspec),'dir'); mkdir(fileparts(mriPhs.fspec)); end
         MRIwrite(mriPhs,mriPhs.fspec);
