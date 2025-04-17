@@ -1,4 +1,4 @@
-function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fOblique, force)
+function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fOblique, force, verbose)
     global src;
     if ~exist('fMask','var');       fMask = []; end
     if ~exist('fOblique','var'); fOblique = []; end
@@ -80,7 +80,11 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
         end
 
         % compute N4 correction
-        cmd{end+1} = ['N4BiasFieldCorrection -d 2 \'];
+        if mri.depth>1
+            cmd{end+1} = ['N4BiasFieldCorrection \'];
+        else
+            cmd{end+1} = ['N4BiasFieldCorrection -d 2 \'];
+        end
         cmd{end+1} = ['-i ' fVolCorr ' \'];
         cmd{end+1} = ['-o [' fVolCorr ',' fVolField ']'];
 
@@ -105,7 +109,11 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
         end
 
     end
-    [status,cmdout] = system(strjoin(cmd,newline),'-echo');
+    if verbose
+        [status,cmdout] = system(strjoin(cmd,newline),'-echo');
+    else
+        [status,cmdout] = system(strjoin(cmd,newline));
+    end
 
     % conform fVolField
     MRIconform(fVolField, f)
