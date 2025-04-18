@@ -282,6 +282,13 @@ function QArun(rSet,fMask,derivDir,force,verbose)
 
 
 
+        % if contains(fCensor,'vfMRIpc')
+        %     cnsr = readmatrix(fCensor);
+        %     if ~all(cnsr(:,2))
+        %     keyboard
+        %     end
+        %     keyboard
+        % end
 
         
     end

@@ -33,20 +33,34 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
         end
     end
 
-    %% Detect header issue
+    %% Detect and fix header issue
     cmd = {src.ants};
     cmd{end+1} = ['PrintHeader' fVol];
     [status,cmdout] = system(strjoin(cmd,newline));
-    if status % Fixed the syntax error
-        if isempty(fOblique)
-            dbstack; error('Header issue with ANTs. Please provide an original file (not deoblique) as f or fOblique'); % Added error handling
+    if status % detect header issue
+        % check if the volume is oblique using AFNI's 3dinfo
+        cmd2 = {src.afni};
+        cmd2{end+1} = ['3dinfo -is_oblique ' fVol];
+        [status2, isOblique] = system(strjoin(cmd2, newline)); isOblique = str2num(isOblique);
+        if isOblique
+            % there is no issue
+            fVolOblique = [];
+            nSlice = MRIget(fVol,'depth');
         else
-            disp('header issue, using fOblique header')
-            mri = MRIread(fOblique,1);
-            mriTmp = MRIread(fVol);
-            mri.vol = mriTmp.vol; clear mriTmp;
-            fVolOblique = [tempname '.nii.gz'];
-            MRIwrite(mri,fVolOblique);
+            % there is an issue
+            if isempty(fOblique)
+                % cannot fix it without fOblique
+                dbstack; error('Header issue with ANTs. Please provide an original file (not deoblique) as f or fOblique'); % Added error handling
+            else
+                % fix it using fOblique
+                disp('header issue, using fOblique header')
+                mri = MRIread(fOblique,1);
+                mriTmp = MRIread(fVol);
+                mri.vol = mriTmp.vol; clear mriTmp;
+                fVolOblique = [tempname '.nii.gz'];
+                MRIwrite(mri,fVolOblique);
+                nSlice = mri.depth;
+            end
         end
     else
         fVolOblique = [];
@@ -80,7 +94,7 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
         end
 
         % compute N4 correction
-        if mri.depth>1
+        if nSlice>1
             cmd{end+1} = ['N4BiasFieldCorrection \'];
         else
             cmd{end+1} = ['N4BiasFieldCorrection -d 2 \'];
