@@ -1,6 +1,7 @@
-function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fOblique, force, verbose)
+function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, fMask, fApply, fOblique, force, verbose)
     global src;
     if ~exist('fMask','var');       fMask = []; end
+    if ~exist('fApply','var');     fApply = []; end
     if ~exist('fOblique','var'); fOblique = []; end
     if ~exist('force','var');       force = []; end
     if isempty(force);              force = 0 ; end
@@ -8,6 +9,7 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
 
         
     if iscell(f)
+        dbstack; error('cell input not supported, code that');
         fVolCorr   = cell(size(f));
         fVolTsCorr = cell(size(f));
         fVolField  = cell(size(f));
@@ -77,6 +79,17 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
         fVolTsCorr = [];
     end
     fVolField = replace(fVolCorr,{'_volTs.nii.gz' '_vol.nii.gz'},'_volN4field.nii.gz');
+    if isempty(fApply)
+        fApplyCorr = [];
+    else
+        fApply     = cellstr(fApply);
+        fApplyCorr = cell(size(fApply));
+        for i = 1:length(fApply)
+            fApplyCorr{i} = strsplit((fApply{i}),filesep);
+            fApplyCorr{i}{end} = ['N4_' fApplyCorr{i}{end}];
+            fApplyCorr{i} = strjoin(fApplyCorr{i},filesep);
+        end
+    end
     if force || ~exist(fVolField,'file') || ~exist(fVolCorr,'file') || (~isempty(fVolTsCorr) && ~exist(fVolTsCorr,'file'))
         % mask out non-brain
         if isempty(fMask)
@@ -121,12 +134,27 @@ function [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fObli
             cmd{end+1} = ['-expr ''a/b'' \'];
             cmd{end+1} = ['-prefix ' fVolTsCorr];
         end
+        %and to other files
+        if ~isempty(fApply)
+            for i = 1:length(fApply)
+                cmd{end+1} = '3dcalc -overwrite \';
+                cmd{end+1} = ['-a ' fApply{i} ' \'];
+                cmd{end+1} = ['-b ' fVolField ' \'];
+                cmd{end+1} = ['-expr ''a/b'' \'];
+                cmd{end+1} = ['-prefix ' fApplyCorr{i}];
+            end
+        end
+
+
+
 
     end
-    if verbose
-        [status,cmdout] = system(strjoin(cmd,newline),'-echo');
-    else
-        [status,cmdout] = system(strjoin(cmd,newline));
+    if length(cmd)>2
+        if verbose
+            [status,cmdout] = system(strjoin(cmd,newline),'-echo');
+        else
+            [status,cmdout] = system(strjoin(cmd,newline));
+        end
     end
 
     % conform fVolField
