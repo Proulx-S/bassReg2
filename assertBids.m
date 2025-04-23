@@ -9,7 +9,14 @@ fBhvr  = {fList2.bhvr}';
 fList2 = {fList2.fList}';
 fBhvr  = fBhvr(~cellfun('isempty',fList2));
 fList2 = fList2(~cellfun('isempty',fList2));
-for r = 1:length(fList2); fList2{r} = fList2{r}(:); fBhvr{r} = {fBhvr{r}.par}'; end;                
+for r = 1:length(fList2)
+    fList2{r} = fList2{r}(:);
+    if isempty(fBhvr{r})
+        fBhvr{r} = repmat({'noTask'},size(fList2{r}));
+    else
+        fBhvr{r} = {fBhvr{r}.par}';
+    end
+end
 rcGrp  = {}; for i = 1:length(fList2); rcGrp{end+1} = num2str(i.*ones(size(fList2{i}))); end
 fBhvr  = cat(1,fBhvr{:}); if ~iscell(fBhvr); fBhvr = {}; end
 fList2 = cat(1,fList2{:}); if ~iscell(fList2); fList2 = {}; end

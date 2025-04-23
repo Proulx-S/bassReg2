@@ -58,6 +58,12 @@ tAdjDelay = cat(1,tAdjDelay{:});
 note      = cat(1,note{:});
 mriTime   = cat(1,mriTime{:});
 
+if all(contains(task,'rest','IgnoreCase',true))
+    disp('!!!!!!! rest found, skipping assertBehavior_RetinotopicStimulator2 !!!!!!!')
+    return
+elseif any(contains(task,'rest','IgnoreCase',true))
+    dbstack; error('!!!!!!! rest found amongs other tasks, this should not happen !!!!!!!')
+end
 if isempty(mriFile); disp('no MRI to assert behavior for'); return; end
 
 % par = replace(replace(par,' 			conf/vsmDriven_',''),'.par','');
