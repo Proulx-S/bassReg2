@@ -70,21 +70,15 @@ for r = 1:nRun
     fBase = runSet.fEstimListBase{r};
     fOut = strsplit(fIn,filesep); fOut{end} = ['mcWR_' fOut{end}]; fOut = strjoin(fOut,filesep);
     fOut(strfind(fOut,'['):strfind(fOut,']')) = [];
-    % fOutWeights = strsplit(fIn,filesep); fOutWeights{end} = ['mcWR_' fOutWeights{end}]; fOutWeights{end} = strsplit(fOutWeights{end},'_'); fOutWeights{end}{end} = 'weights.nii.gz'; fOutWeights{end} = strjoin(fOutWeights{end},'_'); fOutWeights = strjoin(fOutWeights,filesep);
-    % fOutPear = strsplit(fIn,filesep); fOutPear{end} = ['mcWR_' fOutPear{end}]; fOutPear{end} = strsplit(fOutPear{end},'_'); fOutPear{end}{end} = 'pearCor.nii.gz'; fOutPear{end} = strjoin(fOutPear{end},'_'); fOutPear = strjoin(fOutPear,filesep);
     fOutParam = replace(fOut,'.nii.gz','');
-    % fOutAv = strsplit(fOut,filesep); fOutAv{end} = ['av_' fOutAv{end}]; fOutAv = strjoin(fOutAv,filesep);
     cmd = {src.afni};
     %%% moco
     cmd{end+1} = '3dAllineate -overwrite \';
     cmd{end+1} = ['-base ' fBase ' \'];
     cmd{end+1} = ['-source ' fIn ' \'];
     cmd{end+1} = ['-prefix ' fOut ' \'];
-    % cmd{end+1} = ['-wtprefix ' replace(fOut,'_volTs.nii.gz','_volWeigths.nii.gz') ' \'];
     cmd{end+1} = ['-1Dparam_save ' fOutParam ' \'];
     cmd{end+1} = ['-1Dmatrix_save ' fOutParam ' \'];
-    % cmd{end+1} = ['-SavePear ' fOutParam '_pear.nii.gz \'];
-    % afni3dAlineateArg = {'-cost ls' '-interp quintic' '-final wsinc5'};
     afni3dAlineateArg = {'-cost lpa+ZZ' '-interp quintic' '-final wsinc5'};
     cmd{end+1} = [strjoin(afni3dAlineateArg,' ') ' \'];
     if ~isempty(fMask)
@@ -102,10 +96,7 @@ for r = 1:nRun
         fineBlur = mean(runSet.vSize(1:2))*param.spSmFac;
         cmd{end+1} = ['-fineblur ' num2str(fineBlur) ' \'];
     end
-    % cmd{end+1} = ['-wtprefix ' fOutWeights ' \'];
-    % cmd{end+1} = ['-PearSave ' tempname ' \']; % not working (because single slice ??)
     cmd{end+1} = '-warp shift_rotate'; % cmd{end+1} = ['-warp shift_rotate -parfix 2 0 -parfix 4 0 -parfix 5 0'];
-    % disp(strjoin(cmd,newline))
 
     % %%% detect smoothing
     % sm = strsplit(fIn,filesep); sm = strsplit(sm{end},'_'); ind = ~cellfun('isempty',regexp(sm,'^sm\d+$')); if any(ind); sm = sm{ind}; else sm = 'sm1'; end; sm = str2num(sm(3:end));

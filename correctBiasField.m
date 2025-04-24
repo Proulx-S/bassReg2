@@ -4,7 +4,19 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
     if ~exist('fApply','var');     fApply = []; end
     if ~exist('fOblique','var'); fOblique = []; end
     if ~exist('force','var');       force = []; end
+    if ~exist('verbose','var');   verbose = []; end
     if isempty(force);              force = 0 ; end
+    if isempty(verbose);          verbose = 0 ; end
+
+
+    % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    % Need to detect when about to write output file in bids directory and write somewhere else.
+    % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!thy
+    for iii = 1:length(fApply)
+        if exist(replace(fApply{iii},'.nii.gz','.json'),'file')
+            dbstack; error('seems like you want to correctBiasField a bids file, but this will write the result in the same folder, and it is a very naughty thing to do');
+        end
+    end
 
 
         
@@ -14,7 +26,7 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
         fVolTsCorr = cell(size(f));
         fVolField  = cell(size(f));
         for r = 1:length(f)
-            [fVolCorr{r},fVolTsCorr{r},fVolField{r}] = correctBiasField(f{r}, fMask, force);
+            [fVolCorr{r},fVolTsCorr{r},fVolField{r}] = correctBiasField(f{r}, fMask, force, verbose);
         end
         return;
     end

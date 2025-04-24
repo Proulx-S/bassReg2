@@ -83,11 +83,17 @@ function QArun(rSet,fMask,derivDir,force,verbose)
 
             %% Compute spikiness
             if contains(rSet.label,'vfMRI')
+                forceThis = force;
+                verboseThis = verbose;
                 %%% Bias Field Correction        
-                [fVolCorr,fVolTsCorr,fVol,fVolField] = correctBiasField(f, fMask, fOrig, force, 0);
+                [fVolCorr,fVolTsCorr,~,fVol,fVolField] = correctBiasField(f, fMask, [], fOrig, forceThis, verboseThis);
                 
+                forceThis = force;
+                verboseThis = verbose;
                 %%% Bias Field Correction
-                [fVesselMask,fNonVesselMask] = computeVesselness(fVolCorr,fMask,force,0);
+                [fSegMask,fNonSegMask] = computeVesselness(fVolCorr,fMask,forceThis,verboseThis);
+                fNonVesselMask = fNonSegMask{contains(fNonSegMask,'_nonvesselSegMask.nii.gz')};
+                fVesselMask    = fSegMask{   contains(fNonSegMask,'_nonvesselSegMask.nii.gz')};
                 disp('!!!!!!!')
                 disp(['inspect mask: ' fNonVesselMask])
                 fVolTs_spkns = fVolTsCorr;
@@ -99,28 +105,31 @@ function QArun(rSet,fMask,derivDir,force,verbose)
             
 
             %%% Spikiness ts        
-            spkns         = MRIread(fVolTs_spkns);             spkns = permute(spkns.vol,[4 1 2 3]);
-            spknsMask = MRIread(fMask_spkns); spknsMask = logical(spknsMask.vol);
+            spkns     = MRIread(fVolTs_spkns); spkns     = permute(spkns.vol,[4 1 2 3]);
+            spknsMask = MRIread(fMask_spkns);  spknsMask = logical(spknsMask.vol);
             spknsMean = mean(spkns(:,spknsMask)   ,2);
             spknsStd  = std( spkns(:,spknsMask),[],2); clear spkns
 
 
             drawnow
             try
-                axSpkns{R} = nexttile([1 1]);
+                axSpkns{R} = nexttile(ht{R},[1 1]);
             catch
                 disp('??????')
                 keyboard
-                axSpkns{R} = nexttile([1 1]);
+                axSpkns{R} = nexttile(ht{R},[1 1]);
             end
-            plot(spknsMean - mean(spknsMean),1:rSet.nFrame(R))
+            % plot(spknsMean - mean(spknsMean),1:rSet.nFrame(R))
+            plot(zscore(spknsMean),1:rSet.nFrame(R))
             axSpkns{R}.YDir = 'reverse';
             ylim(axCorr{R}.YLim)
             xlabel('magnitude spikiness');
             axSpkns{R}.YTickLabel = [];
             grid on
             hold on
-            plot(spknsStd - mean(spknsStd),1:rSet.nFrame(R))
+            % plot(spknsStd - mean(spknsStd),1:rSet.nFrame(R))
+            plot(zscore(spknsStd),1:rSet.nFrame(R))
+            ylim([-5 5])
             legend(axSpkns{R},{'spatial mean' 'spatial std'},'box','off')
             
             
@@ -134,7 +143,7 @@ function QArun(rSet,fMask,derivDir,force,verbose)
             mcLabel(:,contains(mcLabel,'$')) = [];
             
             %%% plot motion parameters
-            axMC{R} = nexttile([1 1]);
+            axMC{R} = nexttile(ht{R},[1 1]);
             plot(mcWR - mean(mcWR,1),1:rSet.nFrame(R))
             axMC{R}.YDir = 'reverse';
             ylim(axCorr{R}.YLim)
@@ -227,44 +236,49 @@ function QArun(rSet,fMask,derivDir,force,verbose)
 
                 %% Load and upadte censor
                 hFig{R} = open(fQA);
-                disp('!!!!!!!!!!!')
-                disp(['enter censor points (0) in: ' newline fCensor])
-                disp('then type "done"')
-                disp('!!!!!!!!!!!')
-                while ~strcmpi(input(' ', 's'), 'done')
-                    disp('type "done" to continue')
-                end
 
-                cnsr = readmatrix(fCensor, 'Delimiter', ',');
-                ax = findobj(hFig{R}.Children.Children,'Type','axes');
-                lgnd = findobj(hFig{R}.Children.Children,'Type','legend');
-                set(lgnd,'AutoUpdate','off')
 
-                for i = 1:length(ax)
-                    delete(findobj(ax(i).Children,'Type','ConstantLine'));
-                end
+                % disp('!!!!!!!!!!!')
+                % disp(['enter censor points (0) in: ' newline fCensor])
+                % disp('then type "done"')
+                % disp('!!!!!!!!!!!')
+                % while ~strcmpi(input(' ', 's'), 'done')
+                %     disp('type "done" to continue')
+                % end
 
-                if ~all(cnsr(:,2))
-                    for i = 1:length(ax)
-                        yline(ax(i),find(~cnsr(:,2)),'r')
-                    end
-                end
+                % cnsr = readmatrix(fCensor, 'Delimiter', ',');
+                % ax = findobj(hFig{R}.Children.Children,'Type','axes');
+                % lgnd = findobj(hFig{R}.Children.Children,'Type','legend');
+                % set(lgnd,'AutoUpdate','off')
 
-                hFig{R}.UserData.censoredPoints = cnsr;
-                saveas(hFig{R},fQA);
+                % for i = 1:length(ax)
+                %     delete(findobj(ax(i).Children,'Type','ConstantLine'));
+                % end
+
+                % if ~all(cnsr(:,2))
+                %     for i = 1:length(ax)
+                %         yline(ax(i),find(~cnsr(:,2)),'r')
+                %     end
+                % end
+
+                % hFig{R}.UserData.censoredPoints = cnsr;
+                % saveas(hFig{R},fQA);
             
 
                 %% Save censor to permanent bids derivatives directory
-                if exist(fCensorDeriv,'file')    
-                    disp('!!!!!!!!!!')
-                    disp('!!!!!!!!!!')
-                    disp('!!!!!!!!!!')
-                    disp(['Overwrite file: ' newline fCensorDeriv newline 'with' newline fCensor newline '? (y/n)'])
-                    if strcmpi(input(' ','s'),'y')
-                        disp('overwriting')
-                        copyfile(fCensor,fCensorDeriv)
-                    else
-                        disp('skipping')
+                if exist(fCensorDeriv,'file')
+                    if~strcmp(fileread(fCensor),fileread(fCensorDeriv))
+                        disp('!!!!!!!!!!')
+                        disp('!!!!!!!!!!')
+                        disp('!!!!!!!!!!')
+                        disp('censor points seem to have been updated')
+                        disp(['Overwrite file: ' newline fCensorDeriv newline 'with' newline fCensor newline '? (y/n)'])
+                        if strcmpi(input(' ','s'),'y')
+                            disp('overwriting')
+                            copyfile(fCensor,fCensorDeriv)
+                        else
+                            disp('not saving changes (yolo)')
+                        end
                     end
                 else
                     copyfile(fCensor,fCensorDeriv)
