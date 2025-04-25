@@ -1,4 +1,4 @@
-function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, fMask, fApply, fOblique, force, verbose)
+function [fVolCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, fMask, fApply, fOblique, force, verbose)
     global src;
     if ~exist('fMask','var');       fMask = []; end
     if ~exist('fApply','var');     fApply = []; end
@@ -7,7 +7,7 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
     if ~exist('verbose','var');   verbose = []; end
     if isempty(force);              force = 0 ; end
     if isempty(verbose);          verbose = 0 ; end
-
+    fApply = cellstr(fApply);
 
     % !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     % Need to detect when about to write output file in bids directory and write somewhere else.
@@ -85,11 +85,11 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
     cmd = {src.afni};
     cmd{end+1} = src.ants;
     fVolCorr  = strsplit(fVol,filesep); fVolCorr{end}  = ['N4_' fVolCorr{end}]; fVolCorr = strjoin(fVolCorr,filesep);
-    if ~isempty(fVolTs)
-        fVolTsCorr = strsplit(fVolTs,filesep); fVolTsCorr{end}  = ['N4_' fVolTsCorr{end}]; fVolTsCorr = strjoin(fVolTsCorr,filesep);
-    else
-        fVolTsCorr = [];
-    end
+    % if ~isempty(fVolTs)
+    %     fVolTsCorr = strsplit(fVolTs,filesep); fVolTsCorr{end}  = ['N4_' fVolTsCorr{end}]; fVolTsCorr = strjoin(fVolTsCorr,filesep);
+    % else
+    %     fVolTsCorr = [];
+    % end
     fVolField = replace(fVolCorr,{'_volTs.nii.gz' '_vol.nii.gz'},'_volN4field.nii.gz');
     if isempty(fApply)
         fApplyCorr = [];
@@ -102,7 +102,7 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
             fApplyCorr{i} = strjoin(fApplyCorr{i},filesep);
         end
     end
-    if force || ~exist(fVolField,'file') || ~exist(fVolCorr,'file') || (~isempty(fVolTsCorr) && ~exist(fVolTsCorr,'file'))
+    if force || ~exist(fVolField,'file') || ~exist(fVolCorr,'file')% || (~isempty(fVolTsCorr) && ~exist(fVolTsCorr,'file'))
         % mask out non-brain
         if isempty(fMask)
             cmd{end+1} = ['cp ' fVol ' ' fVolCorr];
@@ -138,14 +138,14 @@ function [fVolCorr,fVolTsCorr,fApplyCorr,fVol,fVolField] = correctBiasField(f, f
         cmd{end+1} = ['-expr ''a/b'' \'];
         cmd{end+1} = ['-prefix ' fVolCorr];
 
-        % manually apply field correction to time series
-        if ~isempty(fVolTs)
-            cmd{end+1} = '3dcalc -overwrite \';
-            cmd{end+1} = ['-a ' fVolTs ' \'];
-            cmd{end+1} = ['-b ' fVolField ' \'];
-            cmd{end+1} = ['-expr ''a/b'' \'];
-            cmd{end+1} = ['-prefix ' fVolTsCorr];
-        end
+        % % manually apply field correction to time series
+        % if ~isempty(fVolTs)
+        %     cmd{end+1} = '3dcalc -overwrite \';
+        %     cmd{end+1} = ['-a ' fVolTs ' \'];
+        %     cmd{end+1} = ['-b ' fVolField ' \'];
+        %     cmd{end+1} = ['-expr ''a/b'' \'];
+        %     cmd{end+1} = ['-prefix ' fVolTsCorr];
+        % end
         %and to other files
         if ~isempty(fApply)
             for i = 1:length(fApply)

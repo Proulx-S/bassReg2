@@ -32,7 +32,7 @@ for rs = 1:length(runSetTmp)
         [~,setBids] = fileparts(fileparts(runSetTmp{rs}.finalFiles.fPreprocList(:,1)));
         [a,b] = ismember(cellstr(setBids),cellstr(condBids));
 
-        fieldList = {'fPreprocList' 'fTransList' 'fTransCatList' 'bidsList' 'nFrame' 'nFrameOrig' 'vSize' 'acqTime' 'fOrigList' 'nDummy'};
+        fieldList = {'fPreprocList' 'fTransList' 'fTransCatList' 'bidsList' 'nFrame' 'nFrameOrig' 'vSize' 'acqTime' 'fOrigList'};
         for i = 1:length(fieldList)
             tmp = runSetTmp{rs}.finalFiles.(fieldList{i})(a,:,:);
             runCondTmpTmp(rc).(fieldList{i}) = tmp(b(a),:,:);
@@ -237,7 +237,7 @@ for S = 1:length(subList)
                 % tmp4.bidsDerivDir = cat(1,tmp4.bidsDerivDir,repmat(cellstr(tmp3(i).bidsDerivDir),size(tmp3(i).fPreprocList)));
             end
             % fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fTransList' 'fTransCatList' 'bidsList' 'nFrame' 'vSize' 'acqTime' 'bhvr' 'nDummy' 'fPreprocUnderSesCatRunCatAvList' 'fPreprocUnderSesAvCatRunCatAvList' 'fPreprocUnderSesCatRunAvCatAvList' 'fPreprocUnderSesAvCatRunAvCatAvList'};
-            fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fPreprocMaskList' 'fTransList' 'fTransCatList' 'bidsList' 'nFrame' 'nFrameOrig' 'vSize' 'date' 'acqTime' 'bhvr' 'nDummy'};
+            fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fPreprocMaskList' 'fTransList' 'fTransCatList' 'bidsList' 'tr' 'nFrame' 'nFrameOrig' 'vSize' 'date' 'acqTime' 'bhvr'};
             % fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fTransList' 'fTransCatList'            'nFrame' 'vSize' 'date' 'acqTime' 'bhvr' 'nDummy'};
             for i = 1:length(fieldList)
                     tmp4(1).(fieldList{i}) = cat(1,tmp3(:).(fieldList{i}));
