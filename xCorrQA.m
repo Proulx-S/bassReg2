@@ -29,6 +29,16 @@ global src
 
     % cross-run catenation
     fName = strsplit(fAvList{1},filesep); fName = fName{end};
+    venc = strsplit(fAvList{1},'_');
+    switch nnz(contains(venc,'acq-pcVenc'))
+        case 1
+            venc = venc{contains(venc,'acq-pcVenc')};
+            fName = replace(fName,'_volTs.nii.gz',['_' venc '_volTs.nii.gz']);
+        case 0
+            venc = '';
+        otherwise
+            error('Multiple venc strings found in fAvList');
+    end
     fCatAv = unique(fileparts(fileparts(fAvList)));
     if length(fCatAv)>1
         fCatAv = strsplit(fCatAv{1},filesep);
@@ -39,7 +49,7 @@ global src
     end
     if force || ~exist(fCatAv,'file')
         cmd{end+1} = '3dTcat -overwrite \';
-        cmd{end+1} = ['-prefix ' fCatAv ' \'];
+        cmd{end+1} = ['-prefix ' fullfile(fCatAv,fName) ' \'];
         cmd{end+1} = strjoin(fAvList, ' ');
     end
 
@@ -68,6 +78,10 @@ global src
     %%
     if isempty(outDir); outDir = fileparts(fAvCatAv); else; fFig = fullfile(outDir,[ttStr '.fig']); end
     if isempty(ttStr); fFig = fullfile(outDir,['xCorrQA.fig']); else; fFig = fullfile(outDir,[ttStr '.fig']); end
+    if ~isempty(venc)
+        fFig = strsplit(fFig,filesep); fFig{end} = [venc '_' fFig{end}]; fFig = strjoin(fFig,filesep);
+    end
+    
     
     if ~force && exist(fFig,'file')
         if verbose
@@ -153,7 +167,11 @@ global src
     bids = strsplit(outDir,filesep);
     sub = bids{contains(bids,'sub-')};
     acq = bids{contains(bids,'acq-')};
-    title([sub '; set ' acq],'Interpreter','none')
+    ttStr2 = [sub '; set: ' acq];
+    if ~isempty(venc)
+        ttStr2 = [ttStr2 '; ' venc];
+    end
+    title(ttStr2,'Interpreter','none')
     drawnow
 
 
@@ -166,6 +184,7 @@ global src
     hFig.UserData.fileInd     = fileI;
     hFig.UserData.frameNumber = frameI;
     hFig.UserData.frameTime   = (frameI+nDummy2-1).*fileTR;
+    hFig.UserData.venc        = venc;
 
     %% Save figure
     if ~verbose

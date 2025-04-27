@@ -9,7 +9,9 @@ function [kI,k,hFig,fClust,mainClust] = QAdendrogram(fig,force,verbose)
 
     %% Make or load dendrogram figure
     fFigDendro = replace(fig,'.fig','_dendro.fig');
-    if exist(fFigDendro,'file') && ~force
+    if ~exist(fFigDendro,'file') || force>1
+        hFig = makeDendroFig(fig);
+    else
         if verbose
             disp(['loading ' fFigDendro]);
             hFig = openfig(fFigDendro);
@@ -17,28 +19,59 @@ function [kI,k,hFig,fClust,mainClust] = QAdendrogram(fig,force,verbose)
             load(replace(fFigDendro,'_dendro.fig','_dendro.mat'),'kI','k','fClust','mainClust')
             hFig = [];
             return;
-        end
-    else
-        hFig = makeDendroFig(fig);
+        end        
     end
     ax2 = findobj(hFig.Children,'type','axes');
     ttl = [ax2.Title]; ttl = {ttl.String};
     ax1 = ax2(~cellfun('isempty',ttl));
     ax2 = ax2(cellfun('isempty',ttl));
 
+    % Display file names
+    disp('---timeseries---')
+    disp(char(hFig.UserData.fileNames))
+    disp('---timeseries averages---')
+    disp(char(hFig.UserData.fAvList))
+    disp('---catenated averages---')
+    disp(char(hFig.UserData.fCatAv))
+    disp('---grand average---')
+    disp(char(hFig.UserData.fAvCatAv))
+    
 
+    % Load saved k and kI and update dendrogram
+    if force && verbose && exist(replace(fFigDendro,'_dendro.fig','_dendro.mat'),'file')
+        load(replace(fFigDendro,'_dendro.fig','_dendro.mat'),'k')
+        hFig.UserData.k  = k;
+        hFig.UserData.kI = cluster(hFig.UserData.Z,'MaxClust',hFig.UserData.k);
+        updateDendrogram(ax2, hFig.UserData.Z, hFig.UserData.k);
+    end
 
 
     %% Define clustering interactively
-    if verbose
+    if verbose && force
         done = false;
         while ~done
-            disp('desired number of clusters (d when done):')
+            disp('Options:')
+            disp(['Current k = ' num2str(hFig.UserData.k)])
+            disp('  - Enter a number for desired clusters')
+            disp('  - a/z keys to increase/decrease k by 1')
+            disp('  - c to change cluster coloring')
+            disp('  - p to pick threshold Z value with mouse')
+            disp('  - d when done')
             k = input('', 's');
             if strcmp(k, 'd')
                 done = true;
+            elseif strcmp(k, 'a') % Up arrow
+                % Increase k by 1
+                updateDendrogram(ax2, hFig.UserData.Z, hFig.UserData.k + 1);
+            elseif strcmp(k, 'z') % Down arrow
+                % Decrease k by 1
+                updateDendrogram(ax2, hFig.UserData.Z, max(1, hFig.UserData.k - 1));
+            elseif ~isnan(str2double(k)) && ~imag(str2double(k))
+                % Try to convert to number
+                updateDendrogram(ax2, hFig.UserData.Z, str2double(k));
             else
-                updateDendrogram(ax2,hFig.UserData.Z,str2double(k));
+                % Change cluster coloring
+                updateDendrogram(ax2, hFig.UserData.Z, hFig.UserData.k);
             end
         end
     end
@@ -139,22 +172,41 @@ function [kI,k,hFig,fClust,mainClust] = QAdendrogram(fig,force,verbose)
         hFig.Visible = 'on';
         drawnow
 
-        % Display file names
-        disp('---timeseries---')
-        disp(char(hFig.UserData.fileNames))
-        disp('---timeseries averages---')
-        disp(char(hFig.UserData.fAvList))
-        disp('---catenated averages---')
-        disp(char(hFig.UserData.fCatAv))
-        disp('---grand average---')
-        disp(char(hFig.UserData.fAvCatAv))
+        hFig.UserData.k = 1;
+        hFig.UserData.kI = ones(size(length(rho),1));
+
+        % % Display file names
+        % disp('---timeseries---')
+        % disp(char(hFig.UserData.fileNames))
+        % disp('---timeseries averages---')
+        % disp(char(hFig.UserData.fAvList))
+        % disp('---catenated averages---')
+        % disp(char(hFig.UserData.fCatAv))
+        % disp('---grand average---')
+        % disp(char(hFig.UserData.fAvCatAv))
 
     
-    function kI = updateDendrogram(ax,Z,k)
-        kI = cluster(Z,'MaxClust',k);
-        dendrogram(ax,Z, 0, 'Reorder',1:size(Z,1)+1,'Orientation','right','ClusterIndices',kI);
+    function updateDendrogram(ax,Z,k)
+        warning('off', 'stats:linkage:NonMonotonicTree');
+        % Update clustering if k has changed
+        if k~=ax.Parent.UserData.k
+            ax.Parent.UserData.kI = cluster(Z,'MaxClust',k);
+            ax.Parent.UserData.k  = k;
+        end
+        % Randomize coloring using kIrand
+        kU     = unique(ax.Parent.UserData.kI);
+        kMap   = containers.Map(kU, kU(randperm(length(kU))));
+        kIrand = ax.Parent.UserData.kI;
+        for i = 1:length(kU); kIrand(ax.Parent.UserData.kI==kU(i)) = kMap(kU(i)); end
+        % Update dendrogram
+        dendrogram(ax,Z, 0, 'Reorder',1:size(Z,1)+1,'Orientation','right','ClusterIndices',kIrand,'ShowCut',true);
         set(ax,'YDir','reverse','YTick',[],'XTick',[]);
-        ax.Parent.UserData.k  = k;
-        ax.Parent.UserData.kI = kI;
         drawnow
+
+        % clusterAssignments = cluster(Z,Cutoff=18,Criterion="inconsistent");
+        % dendrogram(ax,Z, 0, 'Reorder',1:size(Z,1)+1,'Orientation','right','ClusterIndices',clusterAssignments,'ShowCut',true);
+        % % set(ax,'YDir','reverse','YTick',[],'XTick',[]);
+        % set(ax,'YDir','reverse','YTick',[]);
+
+
         
