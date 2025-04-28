@@ -54,8 +54,6 @@ function [kI,k,hFig,fClust,mainClust] = QAdendrogram(fig,force,verbose)
             disp(['Current k = ' num2str(hFig.UserData.k)])
             disp('  - Enter a number for desired clusters')
             disp('  - a/z keys to increase/decrease k by 1')
-            disp('  - c to change cluster coloring')
-            disp('  - p to pick threshold Z value with mouse')
             disp('  - d when done')
             k = input('', 's');
             if strcmp(k, 'd')
