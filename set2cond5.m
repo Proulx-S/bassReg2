@@ -237,7 +237,7 @@ for S = 1:length(subList)
                 % tmp4.bidsDerivDir = cat(1,tmp4.bidsDerivDir,repmat(cellstr(tmp3(i).bidsDerivDir),size(tmp3(i).fPreprocList)));
             end
             % fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fTransList' 'fTransCatList' 'bidsList' 'nFrame' 'vSize' 'acqTime' 'bhvr' 'nDummy' 'fPreprocUnderSesCatRunCatAvList' 'fPreprocUnderSesAvCatRunCatAvList' 'fPreprocUnderSesCatRunAvCatAvList' 'fPreprocUnderSesAvCatRunAvCatAvList'};
-            fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fPreprocMaskList' 'fTransList' 'fTransCatList' 'bidsList' 'tr' 'nFrame' 'nFrameOrig' 'vSize' 'date' 'acqTime' 'bhvr'};
+            fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fPreprocMaskList' 'fTransList' 'fTransCatList' 'bidsList' 'tr' 'nFrame' 'nFrameOrig' 'vSize' 'date' 'acqTime' 'bhvr' 'volAnat'};
             % fieldList = {'fList' 'fOrigList' 'fPreprocList' 'fTransList' 'fTransCatList'            'nFrame' 'vSize' 'date' 'acqTime' 'bhvr' 'nDummy'};
             for i = 1:length(fieldList)
                     tmp4(1).(fieldList{i}) = cat(1,tmp3(:).(fieldList{i}));
@@ -269,31 +269,39 @@ end
 
 
 
-%% Match volAnat to mri subjects
-tmp = [volAnat{:}];
-for i = 1:length(tmp)
-    S = ismember(subList,tmp{i}.sub);
-    switch tmp{i}.label
-        case 'fs'
-            if isempty(tmp{i}.fsDir)
-                continue
-            end
-            if ~isfield(rCond{S},'fs')
-                rCond{S}.fs = tmp{i};
-            else
-                rCond{S}.fs(end+1,1) = tmp{i};
-            end
-        case 'avMap'
-            if isempty(tmp{i}.fList)
-                continue
-            end
-            if ~isfield(rCond{S},'avMap')
-                rCond{S}.avMap = tmp{i};
-            else
-                rCond{S}.avMap(end+1,1) = tmp{i};
-            end
+%% Consolidate volAnat
+volAnat = cell(size(subList));
+for S = 1:length(subList)
+    
+    % collect all volAnat
+    volAnatTmp = [];
+    acqList = fields(rCond{S}); acqList(ismember(acqList,{'phs' 'fs' 'avMap'})) = [];
+    for A = 1:length(acqList)
+        taskList = fields(rCond{S}.(acqList{A})); taskList(~contains(taskList,{'task_'})) = [];
+        for T = 1:length(taskList)
+            volAnatTmp = cat(1,volAnatTmp,rCond{S}.(acqList{A}).(taskList{T}).volAnat);
+        end
     end
+
+    % combine volAnat
+    imList = fields(volAnatTmp);
+    for i = 1:length(imList)
+        volAnat{S}.(imList{i}) = cat(1,volAnatTmp.(imList{i}));
+        [~,b,~] = unique(fullfile({volAnat{S}.(imList{i}).folder},{volAnat{S}.(imList{i}).name}));
+        volAnat{S}.(imList{i}) = volAnat{S}.(imList{i})(b);
+    end
+
+    % redistribute volAnat
+    acqList = fields(rCond{S}); acqList(ismember(acqList,{'phs' 'fs' 'avMap'})) = [];
+    for A = 1:length(acqList)
+        taskList = fields(rCond{S}.(acqList{A})); taskList(~contains(taskList,{'task_'})) = [];
+        for T = 1:length(taskList)
+            rCond{S}.(acqList{A}).(taskList{T}).volAnat = volAnat{S};
+        end
+    end
+
 end
+
 
 
 
