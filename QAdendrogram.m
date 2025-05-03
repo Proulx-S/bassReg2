@@ -1,4 +1,4 @@
-function [kI,k,hFig,fClust,mainClust] = QAdendrogram(fig,force,verbose)
+function [kI,k,fFigDendro,fClust,mainClust] = QAdendrogram(fig,force,verbose)
     global src
     if ~exist('force','var');     force = []; end
     if ~exist('verbose','var'); verbose = []; end
