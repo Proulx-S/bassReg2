@@ -141,12 +141,11 @@ nRun = size(runSet.fPlumbList,1);
 if isfield(runSet,'nEcho')
     nEcho = runSet.nEcho;
 else
-    nEcho = contains(bidsList,'echo-'); nEcho = unique(bidsList(nEcho,:));
+    nEcho = contains(bidsList,'echo-'); nEcho = unique(bidsList(:,:,nEcho));
     if isempty(nEcho)
         nEcho = 1;
     else
         nEcho = length(nEcho);
-        dbstack; error('double-check that')
     end
 end
 if nEcho==1
