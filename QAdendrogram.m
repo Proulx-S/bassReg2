@@ -73,13 +73,21 @@ function [kI,k,fFigDendro,fClust,mainClust,hFig] = QAdendrogram(fig,force,verbos
             end
         end
     end
-
-
+    
+    if hFig.UserData.k==1 && length(hFig.UserData.kI)==1
+        disp('skipping data exclusion based on clustering')
+        disp('enable verbose to avoid skipping it')
+        disp('creating files with no clustering-based exclusion')
+        % kI = []; k = []; fClust = []; mainClust = [];
+        hFig.UserData.kI = ones(size(hFig.UserData.fileInd,4),1);
+    end
+    
 
     %% Finalize outputs
     % Get final k value
     k  = hFig.UserData.k;
     kI = hFig.UserData.kI;
+
 
     % Order clusters by size
     [kIu, ~, ~] = unique(kI);
