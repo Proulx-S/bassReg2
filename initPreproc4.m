@@ -2,10 +2,10 @@ function runSet = initPreproc4(runSet,geomRef,param,skipMask,force,verbose)
 global src
 
 if ~isfield(runSet,'fOrigList'); runSet.fOrigList = []; end
-if ~isfield(runSet,'label');         runSet.label = []; end
-if ~isfield(runSet,'nDummy');        runSet.label = []; end
-if isempty(runSet.fOrigList); runSet.fOrigList = runSet.fList; end
-if isempty(runSet.label);         runSet.label = 'pp'; end
+if ~isfield(runSet,'label');     runSet.label = []; end
+if ~isfield(runSet,'nDummy');    runSet.label = []; end
+if isempty(runSet.fOrigList);    runSet.fOrigList = runSet.fList; end
+if isempty(runSet.label);        runSet.label = 'pp'; end
 if isempty(runSet.nDummy);       runSet.nDummy = 0; end
 
 if ~exist('force'   ,'var');        force    = []       ; end
