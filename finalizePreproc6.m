@@ -61,6 +61,7 @@ for r = 1:numel(finalPreprocFiles.fPlumbList)
     if force || ~exist(fOut,'file')
         cmd{end+1} = '3dAllineate -overwrite -nocmass -final wsinc5 \';
         cmd{end+1} = ['-source ' fIn ' \'];
+        cmd{end+1} = ['-master ' fIn ' \'];
         cmd{end+1} = ['-1Dmatrix_apply ' fTrans ' \'];
         cmd{end+1} = ['-prefix ' fOut];
         fPreprocUpdated(r) = true;
